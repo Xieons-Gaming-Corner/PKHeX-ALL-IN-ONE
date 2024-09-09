@@ -25,19 +25,19 @@ jobs:
         fetch-depth: 0
 
     - name: List files at the root
-      run: dir  # Lists all files and folders in the root of the repository
+      run: Get-ChildItem  # Lists all files and folders in the root of the repository
 
     - name: List directories in the root
-      run: dir /ad  # Lists only directories in the root
+      run: Get-ChildItem -Directory  # Lists only directories in the root
 
     - name: List contents of XGC_PKHeX
-      run: dir XGC_PKHeX  # Lists contents of the XGC_PKHeX directory
+      run: Get-ChildItem XGC_PKHeX  # Lists contents of the XGC_PKHeX directory
 
     - name: List contents of XGC_PKHeX/Tests
-      run: dir XGC_PKHeX/Tests  # Lists contents of the Tests directory
+      run: Get-ChildItem XGC_PKHeX/Tests  # Lists contents of the Tests directory
 
     - name: List contents of XGC_PKHeX/Tests/PKHeX.Core.Tests
-      run: dir XGC_PKHeX/Tests/PKHeX.Core.Tests  # Lists contents of the PKHeX.Core.Tests directory
+      run: Get-ChildItem XGC_PKHeX/Tests/PKHeX.Core.Tests  # Lists contents of the PKHeX.Core.Tests directory
 
     - name: Install .NET Core
       uses: actions/setup-dotnet@v4
