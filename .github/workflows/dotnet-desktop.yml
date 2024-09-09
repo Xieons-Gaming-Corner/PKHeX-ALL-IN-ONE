@@ -24,8 +24,8 @@ jobs:
       with:
         fetch-depth: 0
 
-    - name: List files in XGC_PKHeX
-      run: dir XGC_PKHeX  # Lists all files and folders in XGC_PKHeX
+    - name: List files at the root
+      run: dir  # Lists all files and folders in the root of the repository
 
     - name: Install .NET Core
       uses: actions/setup-dotnet@v4
