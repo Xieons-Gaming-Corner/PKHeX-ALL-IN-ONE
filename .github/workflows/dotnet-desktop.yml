@@ -18,30 +18,3 @@ jobs:
       Solution_Name: PKHeX.sln                         # Your solution file name
       Test_Project_Path: XGC_PKHeX/Tests/PKHeX.Core.Tests/PKHeX.Core.Tests.csproj # Path to your test project
 
-    steps:
-    - name: Checkout
-      uses: actions/checkout@v4
-      with:
-        fetch-depth: 0
-
-    - name: Install .NET Core
-      uses: actions/setup-dotnet@v4
-      with:
-        dotnet-version: 8.0.x
-
-    - name: Setup MSBuild.exe
-      uses: microsoft/setup-msbuild@v2
-
-    - name: Execute unit tests
-      run: dotnet test ${{ env.Test_Project_Path }}
-
-    - name: Restore the application
-      run: msbuild $env:Solution_Name /t:Restore /p:Configuration=$env:Configuration
-      env:
-        Configuration: ${{ matrix.configuration }}
-
-    - name: Upload build artifacts
-      uses: actions/upload-artifact@v3
-      with:
-        name: Build Artifacts
-        path: ${{ github.workspace }}/bin/${{ matrix.configuration }}  # Adjust path if needed
