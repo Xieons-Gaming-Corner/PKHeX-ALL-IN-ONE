@@ -14,10 +14,6 @@ jobs:
 
     runs-on: windows-latest
 
-    env:
-      Solution_Name: PKHeX.sln                         # Your solution file name
-      Test_Project_Path: XGC_PKHeX/Tests/PKHeX.Core.Tests/PKHeX.Core.Tests.csproj # Update this based on actual structure
-
     steps:
     - name: Checkout
       uses: actions/checkout@v4
@@ -25,7 +21,7 @@ jobs:
         fetch-depth: 0
 
     - name: List all files and directories
-      run: Get-ChildItem -Recurse  # List all files and directories recursively
+      run: Get-ChildItem -Recurse | Select-Object FullName  # List all files and directories recursively
 
     - name: Install .NET Core
       uses: actions/setup-dotnet@v4
@@ -36,12 +32,10 @@ jobs:
       uses: microsoft/setup-msbuild@v2
 
     - name: Execute unit tests
-      run: dotnet test ${{ env.Test_Project_Path }}
+      run: dotnet test Tests/PKHeX.Core.Tests/PKHeX.Core.Tests.csproj
 
     - name: Restore the application
-      run: msbuild $env:Solution_Name /t:Restore /p:Configuration=$env:Configuration
-      env:
-        Configuration: ${{ matrix.configuration }}
+      run: msbuild PKHeX.sln /t:Restore /p:Configuration=${{ matrix.configuration }}
 
     - name: Upload build artifacts
       uses: actions/upload-artifact@v3
