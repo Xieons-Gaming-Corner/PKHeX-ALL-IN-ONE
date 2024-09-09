@@ -7,9 +7,7 @@ on:
     branches: [ "main" ]
 
 jobs:
-
   build:
-
     strategy:
       matrix:
         configuration: [Debug, Release]
@@ -17,10 +15,8 @@ jobs:
     runs-on: windows-latest
 
     env:
-      Solution_Name: MyProject.sln                         # Replace with your actual solution file name
-      Test_Project_Path: MyProject.Tests\MyProject.Tests.csproj # Replace with the path to your test project
-      Wap_Project_Directory: MyProject.Package              # Replace with the WAP project directory
-      Wap_Project_Path: MyProject.Package\MyProject.Package.wapproj # Replace with the full path to the WAP project
+      Solution_Name: PKHeX.sln                         # Your solution file name
+      Test_Project_Path: XGC_PKHeX/Tests/PKHeX.Core.Tests/PKHeX.Core.Tests.csproj # Path to your test project
 
     steps:
     - name: Checkout
@@ -44,25 +40,8 @@ jobs:
       env:
         Configuration: ${{ matrix.configuration }}
 
-    - name: Decode the pfx
-      run: |
-        $pfx_cert_byte = [System.Convert]::FromBase64String("${{ secrets.Base64_Encoded_Pfx }}")
-        $certificatePath = Join-Path -Path $env:Wap_Project_Directory -ChildPath GitHubActionsWorkflow.pfx
-        [IO.File]::WriteAllBytes("$certificatePath", $pfx_cert_byte)
-
-    - name: Create the app package
-      run: msbuild $env:Wap_Project_Path /p:Configuration=$env:Configuration /p:UapAppxPackageBuildMode=$env:Appx_Package_Build_Mode /p:AppxBundle=$env:Appx_Bundle /p:PackageCertificateKeyFile=GitHubActionsWorkflow.pfx /p:PackageCertificatePassword=${{ secrets.Pfx_Key }}
-      env:
-        Appx_Bundle: Always
-        Appx_Bundle_Platforms: x86|x64
-        Appx_Package_Build_Mode: StoreUpload
-        Configuration: ${{ matrix.configuration }}
-
-    - name: Remove the pfx
-      run: Remove-Item -path $env:Wap_Project_Directory\GitHubActionsWorkflow.pfx
-
     - name: Upload build artifacts
       uses: actions/upload-artifact@v3
       with:
-        name: MSIX Package
-        path: ${{ env.Wap_Project_Directory }}\AppPackages
+        name: Build Artifacts
+        path: ${{ github.workspace }}/bin/${{ matrix.configuration }}  # Adjust path if needed
