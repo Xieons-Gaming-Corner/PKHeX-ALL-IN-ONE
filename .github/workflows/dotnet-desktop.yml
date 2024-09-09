@@ -16,7 +16,7 @@ jobs:
 
     env:
       Solution_Name: PKHeX.sln                         # Your solution file name
-      Test_Project_Path: XGC_PKHeX/Tests/PKHeX.Core.Tests/PKHeX.Core.Tests.csproj # Path to your test project
+      Test_Project_Path: XGC_PKHeX/Tests/PKHeX.Core.Tests/PKHeX.Core.Tests.csproj # Correct path to your test project
 
     steps:
     - name: Checkout
@@ -26,6 +26,9 @@ jobs:
 
     - name: List files at the root
       run: dir  # Lists all files and folders in the root of the repository
+
+    - name: List files in XGC_PKHeX
+      run: dir XGC_PKHeX  # Lists all files and folders in XGC_PKHeX
 
     - name: Install .NET Core
       uses: actions/setup-dotnet@v4
