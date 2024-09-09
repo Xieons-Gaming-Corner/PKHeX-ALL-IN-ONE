@@ -24,8 +24,8 @@ jobs:
       with:
         fetch-depth: 0
 
-    - name: List files
-      run: dir XGC_PKHeX/Tests/PKHeX.Core.Tests  # This will show if the path is correct
+    - name: List files in XGC_PKHeX
+      run: dir XGC_PKHeX  # Lists all files and folders in XGC_PKHeX
 
     - name: Install .NET Core
       uses: actions/setup-dotnet@v4
