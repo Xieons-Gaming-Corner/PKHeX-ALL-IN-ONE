@@ -6,10 +6,14 @@ PKHeX
 
 ![License](https://img.shields.io/badge/License-GPLv3-blue.svg)
 
-# This is an ALL-IN-ONE version of PKHeX which includes ALM (Santacrab2's) and Manu's TeraFinder Plugins
+# This is an Xieon's Gaming Corner Fork of an ALL-IN-ONE version of PKHeX.
+This includes ALM(Auto Legality Mod) by (Santacrab2's) and Manu's TeraFinder Plugins. 
+
+## Forked Archival Version - 
+This version of PkHex is based off 
 
 ## Includes the following Plugins
-* PasteImporter
+* PasteImporter.
 * ExportBoxToShowdown
 * LegalizeBoxes
 * LiveHeX
@@ -25,25 +29,6 @@ PKHeX
 * PokeFileNamer See [instructions](https://github.com/architdate/PokeFilename/wiki/CustomNamer)
 
 Pokémon core series save editor, programmed in [C#](https://en.wikipedia.org/wiki/C_Sharp_%28programming_language%29).
-
-
-# All of my Projects
-
-## Showdown Alternative Website
-- https://genpkm.com - An online alternative to Showdown that has legality checks and batch trade codes built in to make genning pokemon a breeze.
-
-## Scarlet/Violet RaidBot
-
-- [NotRaidBot](https://github.com/bdawg1989/NotPaldeaNET) - The most advanced RaidBot for Scarlet/Violet available, period.
-  
-## PKHeX - AIO (All-In-One)
-
-- [PKHeX-AIO](https://github.com/bdawg1989/PKHeX-ALL-IN-ONE) - A single .exe with ALM, TeraFinder, and PokeNamer plugins included.  No extra folders and plugin.dll's to keep up with.
-
-## SysBot.NET - The Ultimate TradeBot
-
-- [Source Code](https://github.com/bdawg1989/MergeBot)
-
 
 Supports the following files:
 * Save files ("main", \*.sav, \*.dsv, \*.dat, \*.gci, \*.bin)
