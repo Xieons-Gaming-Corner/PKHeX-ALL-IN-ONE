@@ -11,6 +11,8 @@ using System.Threading.Tasks;
 using System.Windows.Forms;
 
 using PKHeX.Core;
+using PKHeX.Core.Encounters;
+using PKHeX.Core.Moves;
 using PKHeX.Drawing;
 using PKHeX.Drawing.Misc;
 using PKHeX.Drawing.PokeSprite;
@@ -581,8 +583,8 @@ public partial class Main : Form
 #if DEBUG
         OpenFile(input, path, ext);
 #else
-            try { OpenFile(input, path, ext); }
-            catch (Exception e) { WinFormsUtil.Error(MsgFileLoadFail + "\nPath: " + path, e); }
+        try { OpenFile(input, path, ext); }
+        catch (Exception e) { WinFormsUtil.Error(MsgFileLoadFail + "\nPath: " + path, e); }
 #endif
     }
 
@@ -856,7 +858,7 @@ public partial class Main : Form
         string version = $"d-{date:yyyyMMdd}";
 #else
         var v = Program.CurrentVersion;
-        string version = $"{2000+v.Major:00}{v.Minor:00}{v.Build:00}";
+        string version = $"{2000 + v.Major:00}{v.Minor:00}{v.Build:00}";
 #endif
         return $"PKH{(HaX ? "a" : "e")}X ({version})";
     }
@@ -1336,4 +1338,269 @@ public partial class Main : Form
     private void ClickUndo(object sender, EventArgs e) => C_SAV.ClickUndo();
     private void ClickRedo(object sender, EventArgs e) => C_SAV.ClickRedo();
     #endregion
+
+    private void generateLAMovesToolStripMenuItem_Click(object sender, EventArgs e)
+    {
+        try
+        {
+            string executablePath = Application.ExecutablePath;
+            string executableDirectory = Path.GetDirectoryName(executablePath);
+            string outputPath = Path.Combine(executableDirectory, "legends_arceus_moves.csv");
+            string errorLogPath = Path.Combine(executableDirectory, "la_error_log.txt");
+
+            LegendsMoveListGenerator.GenerateLegendsArceusMovesCSV(outputPath, errorLogPath);
+
+            if (File.Exists(outputPath))
+            {
+                MessageBox.Show($"Legends Arceus moves CSV generated successfully at:\n{outputPath}", "CSV Generated", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            }
+            else
+            {
+                MessageBox.Show($"Failed to generate CSV file. Please check the error log at:\n{errorLogPath}", "CSV Generation Failed", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show($"An error occurred: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+        }
+    }
+
+    private void generateSVMovesToolStripMenuItem_Click(object sender, EventArgs e)
+    {
+        try
+        {
+            string executablePath = Application.ExecutablePath;
+            string executableDirectory = Path.GetDirectoryName(executablePath);
+            string outputPath = Path.Combine(executableDirectory, "sv_moves.csv");
+            string errorLogPath = Path.Combine(executableDirectory, "sv_error_log.txt");
+
+            ScarletVioletMoveListGenerator.GenerateScarletVioletMovesCSV(outputPath, errorLogPath);
+
+            if (File.Exists(outputPath))
+            {
+                MessageBox.Show($"Scarlet/Violet moves CSV generated successfully at:\n{outputPath}", "CSV Generated", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            }
+            else
+            {
+                MessageBox.Show($"Failed to generate CSV file. Please check the error log at:\n{errorLogPath}", "CSV Generation Failed", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show($"An error occurred: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+        }
+    }
+
+    private void generateBDSPMovesToolStripMenuItem_Click(object sender, EventArgs e)
+    {
+        try
+        {
+            string executablePath = Application.ExecutablePath;
+            string executableDirectory = Path.GetDirectoryName(executablePath);
+            string outputPath = Path.Combine(executableDirectory, "bdsp_moves.csv");
+            string errorLogPath = Path.Combine(executableDirectory, "bdsp_error_log.txt");
+
+            BDSPMoveListGenerator.GenerateBDSPMovesCSV(outputPath, errorLogPath);
+
+            if (File.Exists(outputPath))
+            {
+                MessageBox.Show($"BDSP moves CSV generated successfully at:\n{outputPath}", "CSV Generated", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            }
+            else
+            {
+                MessageBox.Show($"Failed to generate CSV file. Please check the error log at:\n{errorLogPath}", "CSV Generation Failed", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show($"An error occurred: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+        }
+    }
+
+    private void generateSWSHMovesToolStripMenuItem_Click(object sender, EventArgs e)
+    {
+        try
+        {
+            string executablePath = Application.ExecutablePath;
+            string executableDirectory = Path.GetDirectoryName(executablePath);
+            string outputPath = Path.Combine(executableDirectory, "swsh_moves.csv");
+            string errorLogPath = Path.Combine(executableDirectory, "swsh_error_log.txt");
+
+            SWSHMoveListGenerator.GenerateSWSHMovesCSV(outputPath, errorLogPath);
+
+            if (File.Exists(outputPath))
+            {
+                MessageBox.Show($"SWSH moves CSV generated successfully at:\n{outputPath}", "CSV Generated", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            }
+            else
+            {
+                MessageBox.Show($"Failed to generate CSV file. Please check the error log at:\n{errorLogPath}", "CSV Generation Failed", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show($"An error occurred: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+        }
+    }
+
+    private void generateLGPEMovesToolStripMenuItem_Click(object sender, EventArgs e)
+    {
+        try
+        {
+            string executablePath = Application.ExecutablePath;
+            string executableDirectory = Path.GetDirectoryName(executablePath);
+            string outputPath = Path.Combine(executableDirectory, "lgpe_moves.csv");
+            string errorLogPath = Path.Combine(executableDirectory, "lgpe_error_log.txt");
+
+            LGPEMoveListGenerator.GenerateLGPEMovesCSV(outputPath, errorLogPath);
+
+            if (File.Exists(outputPath))
+            {
+                MessageBox.Show($"LGPE moves CSV generated successfully at:\n{outputPath}", "CSV Generated", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            }
+            else
+            {
+                MessageBox.Show($"Failed to generate CSV file. Please check the error log at:\n{errorLogPath}", "CSV Generation Failed", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show($"An error occurred: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+        }
+    }
+
+    private void sVMetLocationsToolStripMenuItem_Click(object sender, EventArgs e)
+    {
+        try
+        {
+            string executablePath = Application.ExecutablePath;
+            string executableDirectory = Path.GetDirectoryName(executablePath);
+            string outputPath = Path.Combine(executableDirectory, "sv_encounters.json");
+            string errorLogPath = Path.Combine(executableDirectory, "sv_encounters_error_log.txt");
+
+            // Call the method to generate the encounters JSON
+            EncounterLocationsSV.GenerateEncounterDataJSON(outputPath, errorLogPath);
+
+            if (File.Exists(outputPath))
+            {
+                MessageBox.Show($"Scarlet/Violet encounters JSON generated successfully at:\n{outputPath}", "JSON Generated", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            }
+            else
+            {
+                MessageBox.Show($"Failed to generate JSON file. Please check the error log at:\n{errorLogPath}", "JSON Generation Failed", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show($"An error occurred: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+        }
+    }
+
+    private void sWSHMetLocationsToolStripMenuItem_Click(object sender, EventArgs e)
+    {
+        try
+        {
+            string executablePath = Application.ExecutablePath;
+            string executableDirectory = Path.GetDirectoryName(executablePath);
+            string outputPath = Path.Combine(executableDirectory, "swsh_encounters.json");
+            string errorLogPath = Path.Combine(executableDirectory, "swsh_encounters_error_log.txt");
+
+            // Call the method to generate the encounters JSON
+            EncounterLocationsSWSH.GenerateEncounterDataJSON(outputPath, errorLogPath);
+
+            if (File.Exists(outputPath))
+            {
+                MessageBox.Show($"Sword/Shield encounters JSON generated successfully at:\n{outputPath}", "JSON Generated", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            }
+            else
+            {
+                MessageBox.Show($"Failed to generate JSON file. Please check the error log at:\n{errorLogPath}", "JSON Generation Failed", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show($"An error occurred: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+        }
+    }
+
+    private void lAMetLocationsToolStripMenuItem_Click(object sender, EventArgs e)
+    {
+        try
+        {
+            string executablePath = Application.ExecutablePath;
+            string executableDirectory = Path.GetDirectoryName(executablePath);
+            string outputPath = Path.Combine(executableDirectory, "la_encounters.json");
+            string errorLogPath = Path.Combine(executableDirectory, "la_encounters_error_log.txt");
+
+            // Call the method to generate the encounters JSON
+            EncounterLocationsLA.GenerateEncounterDataJSON(outputPath, errorLogPath);
+
+            if (File.Exists(outputPath))
+            {
+                MessageBox.Show($"Legends Arceus encounters JSON generated successfully at:\n{outputPath}", "JSON Generated", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            }
+            else
+            {
+                MessageBox.Show($"Failed to generate JSON file. Please check the error log at:\n{errorLogPath}", "JSON Generation Failed", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show($"An error occurred: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+        }
+    }
+
+    private void bDSPMetLocationsToolStripMenuItem_Click(object sender, EventArgs e)
+    {
+        try
+        {
+            string executablePath = Application.ExecutablePath;
+            string executableDirectory = Path.GetDirectoryName(executablePath);
+            string outputPath = Path.Combine(executableDirectory, "bdsp_encounters.json");
+            string errorLogPath = Path.Combine(executableDirectory, "bdsp_encounters_error_log.txt");
+
+            // Call the method to generate the encounters JSON for BDSP
+            EncounterDataBDSP.GenerateEncounterDataJSON(outputPath, errorLogPath);
+
+            if (File.Exists(outputPath))
+            {
+                MessageBox.Show($"BDSP encounters JSON generated successfully at:\n{outputPath}", "JSON Generated", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            }
+            else
+            {
+                MessageBox.Show($"Failed to generate JSON file. Please check the error log at:\n{errorLogPath}", "JSON Generation Failed", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show($"An error occurred: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+        }
+    }
+
+    private void lGPEMetLocationsToolStripMenuItem_Click(object sender, EventArgs e)
+    {
+        try
+        {
+            string executablePath = Application.ExecutablePath;
+            string executableDirectory = Path.GetDirectoryName(executablePath);
+            string outputPath = Path.Combine(executableDirectory, "lgpe_encounters.json");
+            string errorLogPath = Path.Combine(executableDirectory, "lgpe_encounters_error_log.txt");
+
+            // Call the method to generate the encounters JSON
+            EncounterLocationsLGPE.GenerateEncounterDataJSON(outputPath, errorLogPath);
+
+            if (File.Exists(outputPath))
+            {
+                MessageBox.Show($"Let's Go Pikachu/Eevee encounters JSON generated successfully at:\n{outputPath}", "JSON Generated", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            }
+            else
+            {
+                MessageBox.Show($"Failed to generate JSON file. Please check the error log at:\n{errorLogPath}", "JSON Generation Failed", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show($"An error occurred: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+        }
+    }
 }
