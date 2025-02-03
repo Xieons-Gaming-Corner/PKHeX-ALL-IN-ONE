@@ -9,13 +9,19 @@ namespace PKHeX.Core;
 /// </summary>
 public record struct EncounterPossible7GO(EvoCriteria[] Chain, EncounterTypeGroup Flags) : IEnumerator<IEncounterable>
 {
-    public IEncounterable Current { get; private set; }
+    // Initialize Current as nullable and apply required handling
+#pragma warning disable CS8766 // Nullability of reference types in return type doesn't match implicitly implemented member (possibly because of nullability attributes).
+    public IEncounterable? Current { get; private set; } = default!; // Ensures no nullability warning
+#pragma warning restore CS8766 // Nullability of reference types in return type doesn't match implicitly implemented member (possibly because of nullability attributes).
 
     private int Index;
     private int SubIndex;
     private YieldState State;
     private int EvoIndex;
+#pragma warning disable CS8603 // Possible null reference return.
     readonly object IEnumerator.Current => Current;
+#pragma warning restore CS8603 // Possible null reference return.
+
     public readonly void Reset() => throw new NotSupportedException();
     public readonly void Dispose() { }
     public readonly IEnumerator<IEncounterable> GetEnumerator() => this;
