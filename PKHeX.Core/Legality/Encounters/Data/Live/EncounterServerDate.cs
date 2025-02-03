@@ -140,6 +140,7 @@ public static class EncounterServerDate
         {9018, HOME2_AB}, // Hidden Ability Rowlet
         {9019, HOME2_AB}, // Hidden Ability Cyndaquil
         {9020, HOME2_AB}, // Hidden Ability Oshawott
+        {9027, (new(2025, 01, 28), Never)}, // Shiny Enamorus
     };
 
     /// <summary>
@@ -150,6 +151,7 @@ public static class EncounterServerDate
         {9015, HOME2_AB}, // Hidden Ability Turtwig
         {9016, HOME2_AB}, // Hidden Ability Chimchar
         {9017, HOME2_AB}, // Hidden Ability Piplup
+        {9026, (new(2025, 01, 28), Never)}, // Shiny Manaphy
     };
 
     /// <summary>
@@ -216,6 +218,7 @@ public static class EncounterServerDate
         {0054, (new(2024, 11, 21), new(2025, 04, 30))}, // Mythical Pokémon Get Operation - Keldeo Japanese
         {0055, (new(2024, 11, 21), new(2025, 04, 30))}, // Mythical Pokémon Get Operation - Zarude Japanese
         {0056, (new(2024, 11, 21), new(2025, 04, 30))}, // Mythical Pokémon Get Operation - Deoxys Japanese
+        {1010, (new(2025, 01, 21), new(2025, 04, 01))}, // Pokémon Lucario & The Mystery of Mew Movie Gift KOR 아론's Lucario
 
         {9021, HOME3_ML}, // Hidden Ability Sprigatito
         {9022, HOME3_ML}, // Hidden Ability Fuecoco
