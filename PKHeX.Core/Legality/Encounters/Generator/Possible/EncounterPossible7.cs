@@ -9,12 +9,16 @@ namespace PKHeX.Core;
 /// </summary>
 public record struct EncounterPossible7(EvoCriteria[] Chain, EncounterTypeGroup Flags, GameVersion Version) : IEnumerator<IEncounterable>
 {
-    public IEncounterable Current { get; private set; }
+    #pragma warning disable CS8766 // Nullability of reference types in return type doesn't match implicitly implemented member (possibly because of nullability attributes).
+    public IEncounterable? Current { get; private set; }
+    #pragma warning restore CS8766 // Nullability of reference types in return type doesn't match implicitly implemented member (possibly because of nullability attributes).
 
     private int Index;
     private int SubIndex;
     private YieldState State;
+    #pragma warning disable CS8603 // Possible null reference return.
     readonly object IEnumerator.Current => Current;
+    #pragma warning restore CS8603 // Possible null reference return.
     public readonly void Reset() => throw new NotSupportedException();
     public readonly void Dispose() { }
     public readonly IEnumerator<IEncounterable> GetEnumerator() => this;
@@ -69,19 +73,33 @@ public record struct EncounterPossible7(EvoCriteria[] Chain, EncounterTypeGroup 
                     goto case YieldState.EventStart;
                 State = YieldState.BredTrade;
                 return SetCurrent(egg);
+            
             case YieldState.BredTrade:
-                State = YieldState.BredSplit;
-                egg = EncounterGenerator7.MutateEggTrade((EncounterEgg)Current);
-                return SetCurrent(egg);
+                if (Current is EncounterEgg eggBredTrade) // Ensure the correct type
+                {
+                    State = YieldState.BredSplit;
+                    egg = EncounterGenerator7.MutateEggTrade(eggBredTrade);
+                    return SetCurrent(egg);
+                }
+                goto case YieldState.EventStart;
+
             case YieldState.BredSplit:
-                if (!EncounterGenerator7.TryGetSplit((EncounterEgg)Current, Chain, out egg))
-                    goto case YieldState.EventStart;
-                State = YieldState.BredSplitTrade;
-                return SetCurrent(egg);
+                if (Current is EncounterEgg eggBredSplit && EncounterGenerator7.TryGetSplit(eggBredSplit, Chain, out egg))
+                {
+                    State = YieldState.BredSplitTrade;
+                    return SetCurrent(egg);
+                }
+                goto case YieldState.EventStart;
+
             case YieldState.BredSplitTrade:
-                State = YieldState.EventStart;
-                egg = EncounterGenerator7.MutateEggTrade((EncounterEgg)Current);
-                return SetCurrent(egg);
+                if (Current is EncounterEgg eggBredSplitTrade)
+                {
+                    State = YieldState.EventStart;
+                    egg = EncounterGenerator7.MutateEggTrade(eggBredSplitTrade);
+                    return SetCurrent(egg);
+                }
+                goto case YieldState.EventStart;
+
 
             case YieldState.EventStart:
                 if (!Flags.HasFlag(EncounterTypeGroup.Mystery))
