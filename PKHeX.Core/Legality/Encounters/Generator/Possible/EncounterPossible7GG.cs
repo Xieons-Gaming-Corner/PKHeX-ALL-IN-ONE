@@ -9,15 +9,17 @@ namespace PKHeX.Core;
 /// </summary>
 public record struct EncounterPossible7GG(EvoCriteria[] Chain, EncounterTypeGroup Flags, GameVersion Version) : IEnumerator<IEncounterable>
 {
-    public IEncounterable Current { get; private set; }
+#pragma warning disable CS8766 // Nullability of reference types in return type doesn't match implicitly implemented member (possibly because of nullability attributes).
+    public IEncounterable? Current { get; private set; }
+#pragma warning restore CS8766 // Nullability of reference types in return type doesn't match implicitly implemented member (possibly because of nullability attributes).
 
     private int Index;
     private int SubIndex;
     private YieldState State;
-    readonly object IEnumerator.Current => Current;
-    public readonly void Reset() => throw new NotSupportedException();
-    public readonly void Dispose() { }
-    public readonly IEnumerator<IEncounterable> GetEnumerator() => this;
+    readonly object IEnumerator.Current => Current!;
+    public void Reset() => throw new NotSupportedException();
+    public void Dispose() { }
+    public IEnumerator<IEncounterable> GetEnumerator() => this;
 
     private enum YieldState : byte
     {
@@ -54,71 +56,112 @@ public record struct EncounterPossible7GG(EvoCriteria[] Chain, EncounterTypeGrou
             case YieldState.EventStart:
                 if (!Flags.HasFlag(EncounterTypeGroup.Mystery))
                     goto case YieldState.TradeStart;
-                State = YieldState.Event; goto case YieldState.Event;
+                State = YieldState.Event;
+                goto case YieldState.Event;
+
             case YieldState.Event:
                 if (TryGetNextEvent(EncounterEvent.MGDB_G7GG))
                     return true;
-                Index = 0; State = YieldState.EventLocal; goto case YieldState.EventLocal;
+                Index = 0;
+                State = YieldState.EventLocal;
+                goto case YieldState.EventLocal;
+
             case YieldState.EventLocal:
                 if (TryGetNextEvent(EncounterEvent.EGDB_G7GG))
                     return true;
-                Index = 0; goto case YieldState.TradeStart;
+                Index = 0;
+                goto case YieldState.TradeStart;
 
             case YieldState.TradeStart:
                 if (!Flags.HasFlag(EncounterTypeGroup.Trade))
                     goto case YieldState.StaticStart;
                 if (Version == GameVersion.GP)
-                { State = YieldState.TradeGP; goto case YieldState.TradeGP; }
+                {
+                    State = YieldState.TradeGP;
+                    goto case YieldState.TradeGP;
+                }
                 if (Version == GameVersion.GE)
-                { State = YieldState.TradeGE; goto case YieldState.TradeGE; }
+                {
+                    State = YieldState.TradeGE;
+                    goto case YieldState.TradeGE;
+                }
                 break;
+
             case YieldState.TradeGP:
                 if (TryGetNext(Encounters7GG.TradeGift_GP))
                     return true;
-                Index = 0; State = YieldState.TradeShared; goto case YieldState.TradeShared;
+                Index = 0;
+                State = YieldState.TradeShared;
+                goto case YieldState.TradeShared;
+
             case YieldState.TradeGE:
                 if (TryGetNext(Encounters7GG.TradeGift_GE))
                     return true;
-                Index = 0; State = YieldState.TradeShared; goto case YieldState.TradeShared;
+                Index = 0;
+                State = YieldState.TradeShared;
+                goto case YieldState.TradeShared;
+
             case YieldState.TradeShared:
                 if (TryGetNext(Encounters7GG.TradeGift_GG))
                     return true;
-                Index = 0; goto case YieldState.StaticStart;
+                Index = 0;
+                goto case YieldState.StaticStart;
 
             case YieldState.StaticStart:
                 if (!Flags.HasFlag(EncounterTypeGroup.Static))
                     goto case YieldState.SlotStart;
                 if (Version == GameVersion.GP)
-                { State = YieldState.StaticGP; goto case YieldState.StaticGP; }
+                {
+                    State = YieldState.StaticGP;
+                    goto case YieldState.StaticGP;
+                }
                 if (Version == GameVersion.GE)
-                { State = YieldState.StaticGE; goto case YieldState.StaticGE; }
+                {
+                    State = YieldState.StaticGE;
+                    goto case YieldState.StaticGE;
+                }
                 throw new ArgumentOutOfRangeException(nameof(Version));
 
             case YieldState.StaticGP:
                 if (TryGetNext(Encounters7GG.StaticGP))
                     return true;
-                Index = 0; State = YieldState.StaticShared; goto case YieldState.StaticShared;
+                Index = 0;
+                State = YieldState.StaticShared;
+                goto case YieldState.StaticShared;
+
             case YieldState.StaticGE:
                 if (TryGetNext(Encounters7GG.StaticGE))
                     return true;
-                Index = 0; State = YieldState.StaticShared; goto case YieldState.StaticShared;
+                Index = 0;
+                State = YieldState.StaticShared;
+                goto case YieldState.StaticShared;
+
             case YieldState.StaticShared:
                 if (TryGetNext(Encounters7GG.Encounter_GG))
                     return true;
-                Index = 0; goto case YieldState.SlotStart;
+                Index = 0;
+                goto case YieldState.SlotStart;
 
             case YieldState.SlotStart:
                 if (!Flags.HasFlag(EncounterTypeGroup.Slot))
                     break;
-                if (Version is GameVersion.GP)
-                { State = YieldState.SlotGP; goto case YieldState.SlotGP; }
-                if (Version is GameVersion.GE)
-                { State = YieldState.SlotGE; goto case YieldState.SlotGE; }
+                if (Version == GameVersion.GP)
+                {
+                    State = YieldState.SlotGP;
+                    goto case YieldState.SlotGP;
+                }
+                if (Version == GameVersion.GE)
+                {
+                    State = YieldState.SlotGE;
+                    goto case YieldState.SlotGE;
+                }
                 throw new ArgumentOutOfRangeException(nameof(Version));
+
             case YieldState.SlotGP:
                 if (TryGetNext<EncounterArea7b, EncounterSlot7b>(Encounters7GG.SlotsGP))
                     return true;
                 break;
+
             case YieldState.SlotGE:
                 if (TryGetNext<EncounterArea7b, EncounterSlot7b>(Encounters7GG.SlotsGE))
                     return true;
