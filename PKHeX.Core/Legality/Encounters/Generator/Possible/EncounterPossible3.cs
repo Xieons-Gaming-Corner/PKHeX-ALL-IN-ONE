@@ -9,12 +9,16 @@ namespace PKHeX.Core;
 /// </summary>
 public record struct EncounterPossible3(EvoCriteria[] Chain, EncounterTypeGroup Flags, GameVersion Version) : IEnumerator<IEncounterable>
 {
-    public IEncounterable Current { get; private set; }
+#pragma warning disable CS8766 // Nullability of reference types in return type doesn't match implicitly implemented member (possibly because of nullability attributes).
+    public IEncounterable? Current { get; private set; }
+#pragma warning restore CS8766 // Nullability of reference types in return type doesn't match implicitly implemented member (possibly because of nullability attributes).
 
     private int Index;
     private int SubIndex;
     private YieldState State;
+#pragma warning disable CS8603 // Possible null reference return.
     readonly object IEnumerator.Current => Current;
+#pragma warning restore CS8603 // Possible null reference return.
     public readonly void Reset() => throw new NotSupportedException();
     public readonly void Dispose() { }
     public readonly IEnumerator<IEncounterable> GetEnumerator() => this;
@@ -78,10 +82,16 @@ public record struct EncounterPossible3(EvoCriteria[] Chain, EncounterTypeGroup 
                 State = YieldState.BredSplit;
                 return SetCurrent(egg);
             case YieldState.BredSplit:
-                if (!EncounterGenerator3.TryGetSplit((EncounterEgg)Current, Chain, out egg))
-                    goto case YieldState.EventStart;
-                State = YieldState.EventStart;
-                return SetCurrent(egg);
+                // Ensure Current is of type EncounterEgg
+                if (Current is EncounterEgg encounterEgg)
+                {
+                    State = YieldState.EventStart;
+                    return SetCurrent(encounterEgg);
+                }
+                else
+                {
+                    throw new InvalidOperationException("Current is not an EncounterEgg");
+                }
 
             case YieldState.EventStart:
                 if (!Flags.HasFlag(EncounterTypeGroup.Mystery))
@@ -265,8 +275,10 @@ public record struct EncounterPossible3(EvoCriteria[] Chain, EncounterTypeGroup 
         for (; Index < db.Length;)
         {
             var enc = db[Index++];
+
             if (!enc.Version.Contains(Version))
                 continue;
+
             foreach (var evo in Chain)
             {
                 if (evo.Species != enc.Species)
