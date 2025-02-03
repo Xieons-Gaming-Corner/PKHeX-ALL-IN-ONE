@@ -46,8 +46,11 @@ jobs:
     - name: Restore the Application
       run: msbuild PKHeX.sln /t:Restore /p:Configuration=${{ matrix.configuration }}
 
-    - name: Build Project
-      run: msbuild PKHeX.sln /p:Configuration=${{ matrix.configuration }} /p:NoWarn=CS8618;CS8625;CS8604
+    - name: Build Project (msbuild)
+      run: msbuild PKHeX.sln /p:Configuration=${{ matrix.configuration }} /p:NoWarn="CS8618;CS8625;CS8604" /p:TreatWarningsAsErrors=false
+
+    - name: Build Project (dotnet build)
+      run: dotnet build PKHeX.sln --configuration ${{ matrix.configuration }} -p:NoWarn="CS8618;CS8625;CS8604" -p:TreatWarningsAsErrors=false
 
     - name: Upload Build Artifacts
       uses: actions/upload-artifact@v4
