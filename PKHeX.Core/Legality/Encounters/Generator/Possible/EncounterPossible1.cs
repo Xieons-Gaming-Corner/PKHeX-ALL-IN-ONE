@@ -9,12 +9,18 @@ namespace PKHeX.Core;
 /// </summary>
 public record struct EncounterPossible1(EvoCriteria[] Chain, EncounterTypeGroup Flags, GameVersion Version) : IEnumerator<IEncounterable>
 {
-    public IEncounterable Current { get; private set; }
+    // Initialize Current as nullable and apply required handling
+#pragma warning disable CS8766 // Nullability of reference types in return type doesn't match implicitly implemented member (possibly because of nullability attributes).
+    public IEncounterable? Current { get; private set; } = default!; // Prevent CS8618 warning
+#pragma warning restore CS8766 // Nullability of reference types in return type doesn't match implicitly implemented member (possibly because of nullability attributes).
 
     private int Index;
     private int SubIndex;
     private YieldState State;
+#pragma warning disable CS8603 // Possible null reference return.
     readonly object IEnumerator.Current => Current;
+#pragma warning restore CS8603 // Possible null reference return.
+
     public readonly void Reset() => throw new NotSupportedException();
     public readonly void Dispose() { }
     public readonly IEnumerator<IEncounterable> GetEnumerator() => this;
@@ -211,7 +217,7 @@ public record struct EncounterPossible1(EvoCriteria[] Chain, EncounterTypeGroup 
 
     private bool TryGetNext<T>(T[] db) where T : class, IEncounterable, IEncounterMatch
     {
-        for (; Index < db.Length;)
+        for (; Index < db.Length; )
         {
             var enc = db[Index++];
             foreach (var evo in Chain)

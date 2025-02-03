@@ -9,12 +9,16 @@ namespace PKHeX.Core;
 /// </summary>
 public record struct EncounterPossible3GC(EvoCriteria[] Chain, EncounterTypeGroup Flags) : IEnumerator<IEncounterable>
 {
-    public IEncounterable Current { get; private set; }
+#pragma warning disable CS8766 // Nullability of reference types in return type doesn't match implicitly implemented member (possibly because of nullability attributes).
+    public IEncounterable? Current { get; private set; }
+#pragma warning restore CS8766 // Nullability of reference types in return type doesn't match implicitly implemented member (possibly because of nullability attributes).
 
     private int Index;
     private int SubIndex;
     private YieldState State;
+#pragma warning disable CS8603 // Possible null reference return.
     readonly object IEnumerator.Current => Current;
+#pragma warning restore CS8603 // Possible null reference return.
     public readonly void Reset() => throw new NotSupportedException();
     public readonly void Dispose() { }
     public readonly IEnumerator<IEncounterable> GetEnumerator() => this;
@@ -130,11 +134,15 @@ public record struct EncounterPossible3GC(EvoCriteria[] Chain, EncounterTypeGrou
         for (; Index < db.Length;)
         {
             var enc = db[Index++];
-            foreach (var evo in Chain)
+
+            // Check for null and ensure it matches species
+            if (enc != null)
             {
-                if (evo.Species != enc.Species)
-                    continue;
-                return SetCurrent(enc);
+                foreach (var evo in Chain)
+                {
+                    if (evo.Species == enc.Species)
+                        return SetCurrent(enc);
+                }
             }
         }
         return false;

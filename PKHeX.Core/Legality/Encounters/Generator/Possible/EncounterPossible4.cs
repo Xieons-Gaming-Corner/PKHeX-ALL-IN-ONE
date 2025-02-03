@@ -9,12 +9,16 @@ namespace PKHeX.Core;
 /// </summary>
 public record struct EncounterPossible4(EvoCriteria[] Chain, EncounterTypeGroup Flags, GameVersion Version, PKM Entity) : IEnumerator<IEncounterable>
 {
-    public IEncounterable Current { get; private set; }
+#pragma warning disable CS8766 // Nullability of reference types in return type doesn't match implicitly implemented member (possibly because of nullability attributes).
+    public IEncounterable? Current { get; private set; }
+#pragma warning restore CS8766 // Nullability of reference types in return type doesn't match implicitly implemented member (possibly because of nullability attributes).
 
     private int Index;
     private int SubIndex;
     private YieldState State;
+#pragma warning disable CS8603 // Possible null reference return.
     readonly object IEnumerator.Current => Current;
+#pragma warning restore CS8603 // Possible null reference return.
     public readonly void Reset() => throw new NotSupportedException();
     public readonly void Dispose() { }
     public readonly IEnumerator<IEncounterable> GetEnumerator() => this;
@@ -65,16 +69,31 @@ public record struct EncounterPossible4(EvoCriteria[] Chain, EncounterTypeGroup 
                     goto case YieldState.Bred;
                 goto case YieldState.EventStart;
 
-            case YieldState.Bred:
-                if (!EncounterGenerator4.TryGetEgg(Chain, Version, out var egg))
-                    goto case YieldState.EventStart;
-                State = YieldState.BredSplit;
-                return SetCurrent(egg);
-            case YieldState.BredSplit:
-                State = YieldState.EventStart;
-                if (EncounterGenerator4.TryGetSplit((EncounterEgg)Current, Chain, out egg))
-                    return SetCurrent(egg);
-                goto case YieldState.EventStart;
+           case YieldState.Bred:
+    
+    if (!TryGetEgg(Chain, Version, out var egg) || egg == null)
+        goto case YieldState.EventStart;  // Ensure 'egg' is not null before proceeding
+    State = YieldState.BredSplit;
+    return SetCurrent(egg);
+
+        case YieldState.BredSplit:
+            State = YieldState.EventStart;
+            
+            // Ensure Current is an EncounterEgg before casting
+            if (Current is EncounterEgg currentEgg)
+            {
+                // Reuse the existing variable or assign a new value to 'egg' if needed
+                if (TryGetSplit(currentEgg, Chain, out var split) && split != null)
+                {
+                    return SetCurrent(split);
+                }
+            }
+            
+            // If no valid split was found, fall back to EventStart
+            goto case YieldState.EventStart;
+
+                
+             
 
             case YieldState.EventStart:
                 if (!Flags.HasFlag(EncounterTypeGroup.Mystery))
@@ -271,4 +290,37 @@ public record struct EncounterPossible4(EvoCriteria[] Chain, EncounterTypeGroup 
         Current = match;
         return true;
     }
+
+    // Updated method signature to return IEncounterable directly
+    private bool TryGetEgg(EvoCriteria[] chain, GameVersion version, out IEncounterable? egg)
+    {
+        // Call TryGetEgg and capture the result as an EncounterEgg?
+        if (EncounterGenerator4.TryGetEgg(chain, version, out var result))
+        {
+            // Cast the result to IEncounterable, since EncounterEgg implements IEncounterable
+            egg = result;
+            return true;
+        }
+
+        // If no result, set egg to null and return false
+        egg = null;
+        return false;
+    }
+
+
+    // Updated method for TryGetSplit, where IEncounterable is expected as an output
+    private bool TryGetSplit(EncounterEgg current, EvoCriteria[] chain, out IEncounterable? split)
+    {
+        // Pass the result of TryGetSplit into a variable of type EncounterEgg?
+        if (EncounterGenerator4.TryGetSplit(current, chain, out var result))
+        {
+            split = result;  // Cast it to IEncounterable, since EncounterEgg implements IEncounterable
+            return true;
+        }
+        
+        split = null; // If no result, set split to null
+        return false;
+    }
+
+
 }

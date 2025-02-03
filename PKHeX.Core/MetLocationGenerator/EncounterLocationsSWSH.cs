@@ -90,7 +90,7 @@ namespace PKHeX.Core.MetLocationGenerator
 
         private static void AddEncounterInfo(Dictionary<string, List<EncounterInfo>> encounterData, GameStrings gameStrings,
             StreamWriter errorLogger, ushort speciesIndex, byte form, string locationName, int locationId, int minLevel, int maxLevel,
-            string encounterType, bool isShinyLocked = false, bool isGift = false, string fixedBall = null,
+            string encounterType, bool isShinyLocked = false, bool isGift = false, string? fixedBall = null,
             string encounterVersion = "Both", bool canGigantamax = false)
         {
             var pt = PersonalTable.SWSH;
@@ -102,8 +102,10 @@ namespace PKHeX.Core.MetLocationGenerator
             }
 
             // Process base species and its evolutions
+#pragma warning disable CS8604 // Possible null reference argument.
             AddEncounterInfoWithEvolutions(encounterData, gameStrings, pt, errorLogger, speciesIndex, form, locationName, locationId,
                 minLevel, maxLevel, encounterType, isShinyLocked, isGift, fixedBall, encounterVersion, canGigantamax);
+#pragma warning restore CS8604 // Possible null reference argument.
         }
 
         private static void AddEncounterInfoWithEvolutions(Dictionary<string, List<EncounterInfo>> encounterData, GameStrings gameStrings,
@@ -244,7 +246,10 @@ namespace PKHeX.Core.MetLocationGenerator
                 return "Both";
             if ((version1 == "Sword" && version2 == "Shield") ||
                 (version1 == "Shield" && version2 == "Sword"))
+            {
                 return "Both";
+            }
+
             return version1; // Return existing version if they're the same
         }
 
@@ -274,7 +279,9 @@ namespace PKHeX.Core.MetLocationGenerator
             {
                 existingEncounter.MinLevel = Math.Min(existingEncounter.MinLevel, minLevel);
                 existingEncounter.MaxLevel = Math.Max(existingEncounter.MaxLevel, maxLevel);
+#pragma warning disable CS8604 // Possible null reference argument.
                 existingEncounter.EncounterVersion = CombineVersions(existingEncounter.EncounterVersion, encounterVersion);
+#pragma warning restore CS8604 // Possible null reference argument.
 
                 errorLogger.WriteLine($"[{DateTime.Now}] Updated existing encounter: {gameStrings.specieslist[speciesIndex]} " +
                     $"(Dex: {dexNumber}) at {locationName} (ID: {locationId}), Levels {existingEncounter.MinLevel}-{existingEncounter.MaxLevel}, " +
@@ -330,20 +337,20 @@ namespace PKHeX.Core.MetLocationGenerator
 
         private class EncounterInfo
         {
-            public string SpeciesName { get; set; }
+            public string? SpeciesName { get; set; }
             public int SpeciesIndex { get; set; }
             public int Form { get; set; }
-            public string LocationName { get; set; }
+            public string? LocationName { get; set; }
             public int LocationId { get; set; }
             public int MinLevel { get; set; }
             public int MaxLevel { get; set; }
-            public string EncounterType { get; set; }
+            public string? EncounterType { get; set; }
             public bool IsShinyLocked { get; set; }
             public bool IsGift { get; set; }
-            public string FixedBall { get; set; }
-            public string EncounterVersion { get; set; }
+            public string? FixedBall { get; set; }
+            public string? EncounterVersion { get; set; }
             public bool CanGigantamax { get; set; }
-            public string Gender { get; set; } 
+            public string? Gender { get; set; } 
         }
     }
 }

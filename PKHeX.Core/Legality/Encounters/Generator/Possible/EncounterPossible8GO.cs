@@ -9,13 +9,17 @@ namespace PKHeX.Core;
 /// </summary>
 public record struct EncounterPossible8GO(EvoCriteria[] Chain, EncounterTypeGroup Flags) : IEnumerator<IEncounterable>
 {
-    public IEncounterable Current { get; private set; }
+    public IEncounterable Current { get; private set; } = default!; // Default-initialize to avoid CS8618
 
     private int Index;
     private int SubIndex;
     private YieldState State;
     private int EvoIndex;
+
+#pragma warning disable CS8603 // Possible null reference return.
     readonly object IEnumerator.Current => Current;
+#pragma warning restore CS8603 // Possible null reference return.
+
     public readonly void Reset() => throw new NotSupportedException();
     public readonly void Dispose() { }
     public readonly IEnumerator<IEncounterable> GetEnumerator() => this;

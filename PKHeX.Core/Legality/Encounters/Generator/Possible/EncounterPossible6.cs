@@ -9,12 +9,16 @@ namespace PKHeX.Core;
 /// </summary>
 public record struct EncounterPossible6(EvoCriteria[] Chain, EncounterTypeGroup Flags, GameVersion Version) : IEnumerator<IEncounterable>
 {
-    public IEncounterable Current { get; private set; }
+#pragma warning disable CS8766 // Nullability of reference types in return type doesn't match implicitly implemented member (possibly because of nullability attributes).
+    public IEncounterable? Current { get; private set; }
+#pragma warning restore CS8766 // Nullability of reference types in return type doesn't match implicitly implemented member (possibly because of nullability attributes).
 
     private int Index;
     private int SubIndex;
     private YieldState State;
+#pragma warning disable CS8603 // Possible null reference return.
     readonly object IEnumerator.Current => Current;
+#pragma warning restore CS8603 // Possible null reference return.
     public readonly void Reset() => throw new NotSupportedException();
     public readonly void Dispose() { }
     public readonly IEnumerator<IEncounterable> GetEnumerator() => this;
@@ -67,19 +71,46 @@ public record struct EncounterPossible6(EvoCriteria[] Chain, EncounterTypeGroup 
                     goto case YieldState.EventStart;
                 State = YieldState.BredTrade;
                 return SetCurrent(egg);
+           
             case YieldState.BredTrade:
-                State = YieldState.BredSplit;
-                egg = EncounterGenerator6.MutateEggTrade((EncounterEgg)Current);
-                return SetCurrent(egg);
+                if (Current is EncounterEgg encounterEgg) // Using a different name 'encounterEgg'
+                {
+                    State = YieldState.BredSplit;
+                    encounterEgg = EncounterGenerator6.MutateEggTrade(encounterEgg); // Use the new variable name
+                    return SetCurrent(encounterEgg);
+                }
+                else
+                {
+                    // Handle the case where Current is not of type EncounterEgg or is null
+                    throw new InvalidOperationException("Current is not an EncounterEgg");
+                }
+
             case YieldState.BredSplit:
-                if (!EncounterGenerator6.TryGetSplit((EncounterEgg)Current, Chain, out egg))
-                    goto case YieldState.EventStart;
-                State = YieldState.BredSplitTrade;
-                return SetCurrent(egg);
+                if (Current is EncounterEgg encounterEggSplit) // Renamed to 'encounterEggSplit'
+                {
+                    if (!EncounterGenerator6.TryGetSplit(encounterEggSplit, Chain, out var splitEgg))
+                        goto case YieldState.EventStart;
+                    State = YieldState.BredSplitTrade;
+                    return SetCurrent(splitEgg);
+                }
+                else
+                {
+                    // Handle the case where Current is not an EncounterEgg or is null
+                    throw new InvalidOperationException("Current is not an EncounterEgg");
+                }
+
             case YieldState.BredSplitTrade:
-                State = YieldState.EventStart;
-                egg = EncounterGenerator6.MutateEggTrade((EncounterEgg)Current);
-                return SetCurrent(egg);
+                if (Current is EncounterEgg encounterEggTrade) // Renamed to 'encounterEggTrade'
+                {
+                    State = YieldState.EventStart;
+                    var tradedEgg = EncounterGenerator6.MutateEggTrade(encounterEggTrade); // Renamed to 'tradedEgg'
+                    return SetCurrent(tradedEgg);
+                }
+                else
+                {
+                    // Handle the case where Current is not an EncounterEgg or is null
+                    throw new InvalidOperationException("Current is not an EncounterEgg");
+                }
 
             case YieldState.EventStart:
                 if (!Flags.HasFlag(EncounterTypeGroup.Mystery))
@@ -201,7 +232,7 @@ public record struct EncounterPossible6(EvoCriteria[] Chain, EncounterTypeGroup 
     {
         while (SubIndex < slots.Length)
         {
-            var enc = slots[SubIndex++];
+            var enc = slots[SubIndex++]; 
             foreach (var evo in Chain)
             {
                 if (enc.Species != evo.Species)

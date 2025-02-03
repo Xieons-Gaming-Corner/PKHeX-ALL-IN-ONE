@@ -103,9 +103,11 @@ namespace PKHeX.Core.MetLocationGenerator
                 if (string.IsNullOrEmpty(locationName))
                     locationName = $"Unknown Location {locationId}";
 
+#pragma warning disable CS8604 // Possible null reference argument.
                 AddEncounterInfoWithEvolutions(encounterData, gameStrings, pt, errorLogger, encounter.Species, encounter.Form, locationName, locationId,
                     encounter.Level, encounter.Level, "Static", encounter.Shiny == Shiny.Never, false,
                     encounter.FixedBall != Ball.None ? encounter.FixedBall.ToString() : null, versionName, SizeType9.RANDOM, 0);
+#pragma warning restore CS8604 // Possible null reference argument.
             }
         }
 
@@ -196,7 +198,7 @@ namespace PKHeX.Core.MetLocationGenerator
 
         private static void AddEncounterInfoWithEvolutions(Dictionary<string, List<EncounterInfo>> encounterData, GameStrings gameStrings,
             PersonalTable9SV pt, StreamWriter errorLogger, ushort speciesIndex, byte form, string locationName, int locationId,
-            int minLevel, int maxLevel, string encounterType, bool isShinyLocked, bool isGift, string fixedBall,
+            int minLevel, int maxLevel, string encounterType, bool isShinyLocked, bool isGift, string? fixedBall,
             string encounterVersion, SizeType9 sizeType, byte sizeValue)
         {
             var personalInfo = pt.GetFormEntry(speciesIndex, form);
@@ -207,8 +209,10 @@ namespace PKHeX.Core.MetLocationGenerator
             }
 
             // Process base species
+#pragma warning disable CS8604 // Possible null reference argument.
             AddSingleEncounterInfo(encounterData, gameStrings, errorLogger, speciesIndex, form, locationName, locationId,
                 minLevel, maxLevel, encounterType, isShinyLocked, isGift, fixedBall, encounterVersion, sizeType, sizeValue);
+#pragma warning restore CS8604 // Possible null reference argument.
 
             // Track processed species/forms to avoid duplicates
             var processedForms = new HashSet<(ushort Species, byte Form)>();
@@ -326,7 +330,10 @@ namespace PKHeX.Core.MetLocationGenerator
                 return "Both";
             if ((version1 == "Scarlet" && version2 == "Violet") ||
                 (version1 == "Violet" && version2 == "Scarlet"))
+            {
                 return "Both";
+            }
+
             return version1; // Return existing version if they're the same
         }
 
@@ -357,7 +364,9 @@ namespace PKHeX.Core.MetLocationGenerator
                 // If this is the same species in the same location, combine versions and keep lowest level
                 existingEncounter.MinLevel = Math.Min(existingEncounter.MinLevel, minLevel);
                 existingEncounter.MaxLevel = Math.Max(existingEncounter.MaxLevel, maxLevel);
+#pragma warning disable CS8604 // Possible null reference argument.
                 existingEncounter.EncounterVersion = CombineVersions(existingEncounter.EncounterVersion, encounterVersion);
+#pragma warning restore CS8604 // Possible null reference argument.
 
                 errorLogger.WriteLine($"[{DateTime.Now}] Updated existing encounter: {gameStrings.specieslist[speciesIndex]} " +
                     $"(Dex: {dexNumber}) at {locationName} (ID: {locationId}), Levels {existingEncounter.MinLevel}-{existingEncounter.MaxLevel}, " +
@@ -414,21 +423,21 @@ namespace PKHeX.Core.MetLocationGenerator
 
         private class EncounterInfo
         {
-            public string SpeciesName { get; set; }
+            public string? SpeciesName { get; set; }
             public int SpeciesIndex { get; set; }
             public int Form { get; set; }
-            public string LocationName { get; set; }
+            public string? LocationName { get; set; }
             public int LocationId { get; set; }
             public int MinLevel { get; set; }
             public int MaxLevel { get; set; }
-            public string EncounterType { get; set; }
+            public string? EncounterType { get; set; }
             public bool IsShinyLocked { get; set; }
             public bool IsGift { get; set; }
-            public string FixedBall { get; set; }
-            public string EncounterVersion { get; set; }
+            public string? FixedBall { get; set; }
+            public string? EncounterVersion { get; set; }
             public SizeType9 SizeType { get; set; }
             public byte SizeValue { get; set; }
-            public string Gender { get; set; }
+            public string? Gender { get; set; }
         }
     }
 }

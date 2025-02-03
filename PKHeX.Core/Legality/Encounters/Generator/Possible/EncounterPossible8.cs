@@ -9,12 +9,16 @@ namespace PKHeX.Core;
 /// </summary>
 public record struct EncounterPossible8(EvoCriteria[] Chain, EncounterTypeGroup Flags, GameVersion Version) : IEnumerator<IEncounterable>
 {
-    public IEncounterable Current { get; private set; }
+#pragma warning disable CS8766 // Nullability of reference types in return type doesn't match implicitly implemented member (possibly because of nullability attributes).
+    public IEncounterable? Current { get; private set; }
+#pragma warning restore CS8766 // Nullability of reference types in return type doesn't match implicitly implemented member (possibly because of nullability attributes).
 
     private int Index;
     private int SubIndex;
     private YieldState State;
+#pragma warning disable CS8603 // Possible null reference return.
     readonly object IEnumerator.Current => Current;
+#pragma warning restore CS8603 // Possible null reference return.
     public readonly void Reset() => throw new NotSupportedException();
     public readonly void Dispose() { }
     public readonly IEnumerator<IEncounterable> GetEnumerator() => this;
@@ -67,10 +71,16 @@ public record struct EncounterPossible8(EvoCriteria[] Chain, EncounterTypeGroup 
                 State = YieldState.BredSplit;
                 return SetCurrent(egg);
             case YieldState.BredSplit:
-                if (!EncounterGenerator8.TryGetSplit((EncounterEgg)Current, Chain, out egg))
+                if (Current is EncounterEgg encounterEgg && EncounterGenerator8.TryGetSplit(encounterEgg, Chain, out var newEgg))
+                {
+                    State = YieldState.EventStart;
+                    return SetCurrent(newEgg);
+                }
+                else
+                {
                     goto case YieldState.EventStart;
-                State = YieldState.EventStart;
-                return SetCurrent(egg);
+                }
+
 
             case YieldState.EventStart:
                 if (!Flags.HasFlag(EncounterTypeGroup.Mystery))
