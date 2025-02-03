@@ -38,7 +38,7 @@ jobs:
       run: msbuild PKHeX.sln /t:Restore /p:Configuration=${{ matrix.configuration }}
 
     - name: Upload build artifacts
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: Build Artifacts
         path: ${{ github.workspace }}/bin/${{ matrix.configuration }}  # Adjust path if needed
