@@ -74,12 +74,11 @@ namespace PKHeX.WinForms
             L_UpdateAvailable = new System.Windows.Forms.LinkLabel();
             toolTip = new System.Windows.Forms.ToolTip(components);
             splitContainer1 = new System.Windows.Forms.SplitContainer();
-            dragout = new Controls.SelectablePictureBox();
+            dragout = new PKHeX.WinForms.Controls.SelectablePictureBox();
             PB_Legal = new System.Windows.Forms.PictureBox();
-            PKME_Tabs = new Controls.PKMEditor();
-            C_SAV = new Controls.SAVEditor();
+            PKME_Tabs = new PKHeX.WinForms.Controls.PKMEditor();
+            C_SAV = new PKHeX.WinForms.Controls.SAVEditor();
             splitContainer2 = new System.Windows.Forms.SplitContainer();
-            generateLegalBallsToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             sVBallGeneratorToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             sWSHBallGeneratorToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             bDSPBallGeneratorToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
@@ -160,7 +159,7 @@ namespace PKHeX.WinForms
             // 
             // Menu_Tools
             // 
-            Menu_Tools.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] { Menu_Showdown, Menu_Data, Menu_Folder, generateMoveListToolStripMenuItem, generateMetLocationsToolStripMenuItem, generateLegalBallsToolStripMenuItem });
+            Menu_Tools.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] { Menu_Showdown, Menu_Data, Menu_Folder, generateMetLocationsToolStripMenuItem, generateMoveListToolStripMenuItem });
             Menu_Tools.Name = "Menu_Tools";
             Menu_Tools.Size = new System.Drawing.Size(46, 20);
             Menu_Tools.Text = "Tools";
@@ -576,6 +575,31 @@ namespace PKHeX.WinForms
             splitContainer2.SplitterWidth = 1;
             splitContainer2.TabIndex = 106;
             // 
+            // sVBallGeneratorToolStripMenuItem
+            // 
+            sVBallGeneratorToolStripMenuItem.Name = "sVBallGeneratorToolStripMenuItem";
+            sVBallGeneratorToolStripMenuItem.Size = new System.Drawing.Size(32, 19);
+            // 
+            // sWSHBallGeneratorToolStripMenuItem
+            // 
+            sWSHBallGeneratorToolStripMenuItem.Name = "sWSHBallGeneratorToolStripMenuItem";
+            sWSHBallGeneratorToolStripMenuItem.Size = new System.Drawing.Size(32, 19);
+            // 
+            // bDSPBallGeneratorToolStripMenuItem
+            // 
+            bDSPBallGeneratorToolStripMenuItem.Name = "bDSPBallGeneratorToolStripMenuItem";
+            bDSPBallGeneratorToolStripMenuItem.Size = new System.Drawing.Size(32, 19);
+            // 
+            // pLABallGeneratorToolStripMenuItem
+            // 
+            pLABallGeneratorToolStripMenuItem.Name = "pLABallGeneratorToolStripMenuItem";
+            pLABallGeneratorToolStripMenuItem.Size = new System.Drawing.Size(32, 19);
+            // 
+            // lGPEBallGeneratorToolStripMenuItem
+            // 
+            lGPEBallGeneratorToolStripMenuItem.Name = "lGPEBallGeneratorToolStripMenuItem";
+            lGPEBallGeneratorToolStripMenuItem.Size = new System.Drawing.Size(32, 19);
+            // 
             // Main
             // 
             AllowDrop = true;
@@ -660,7 +684,6 @@ namespace PKHeX.WinForms
         private System.Windows.Forms.ToolStripMenuItem lAMetLocationsToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem bDSPMetLocationsToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem lGPEMetLocationsToolStripMenuItem;
-        private System.Windows.Forms.ToolStripMenuItem generateLegalBallsToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem sVBallGeneratorToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem sWSHBallGeneratorToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem bDSPBallGeneratorToolStripMenuItem;

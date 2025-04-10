@@ -32,6 +32,12 @@ namespace PKHeX.Core.MetLocationGenerator
                 ProcessStaticEncounters(Encounters8.StaticSW, "Sword", encounterData, gameStrings, errorLogger);
                 ProcessStaticEncounters(Encounters8.StaticSH, "Shield", encounterData, gameStrings, errorLogger);
 
+                // Process egg met locations
+                ProcessEggMetLocations(encounterData, gameStrings, errorLogger);
+
+                // Process Den encounters
+                ProcessDenEncounters(encounterData, gameStrings, errorLogger);
+
                 // Process Max Lair encounters
                 ProcessMaxLairEncounters(encounterData, gameStrings, errorLogger);
 
@@ -66,6 +72,62 @@ namespace PKHeX.Core.MetLocationGenerator
             }
         }
 
+        private static void ProcessEggMetLocations(Dictionary<string, List<EncounterInfo>> encounterData, GameStrings gameStrings, StreamWriter errorLogger)
+        {
+            const int eggMetLocationId = 60002;
+            const string locationName = "a Nursery Worker";
+
+            errorLogger.WriteLine($"[{DateTime.Now}] Processing egg met locations with location ID: {eggMetLocationId} ({locationName})");
+
+            var pt = PersonalTable.SWSH;
+
+            // Process all breedable Pokémon
+            for (ushort species = 1; species < pt.MaxSpeciesID; species++)
+            {
+                var personalInfo = pt.GetFormEntry(species, 0);
+                if (personalInfo is null || !personalInfo.IsPresentInGame)
+                    continue;
+
+                // Skip species that can't breed (Undiscovered egg group)
+                if (personalInfo.EggGroup1 == 15 || personalInfo.EggGroup2 == 15)
+                    continue;
+
+                // For each valid form
+                byte formCount = personalInfo.FormCount;
+                for (byte form = 0; form < formCount; form++)
+                {
+                    var formInfo = pt.GetFormEntry(species, form);
+                    if (formInfo is null || !formInfo.IsPresentInGame)
+                        continue;
+
+                    // Skip forms that can't breed
+                    if (formInfo.EggGroup1 == 15 || formInfo.EggGroup2 == 15)
+                        continue;
+
+                    bool canGigantamax = Gigantamax.CanToggle(species, form);
+
+                    // Eggs hatch at level 1
+                    AddSingleEncounterInfo(
+                        encounterData,
+                        gameStrings,
+                        errorLogger,
+                        species,
+                        form,
+                        locationName,
+                        eggMetLocationId,
+                        1, // Min level
+                        1, // Max level
+                        "Egg", // Encounter type
+                        false, // Eggs are never shiny locked
+                        true, // Eggs are considered "gift" Pokémon
+                        string.Empty, // No fixed ball for eggs
+                        "Both", // Available in both versions
+                        canGigantamax
+                    );
+                }
+            }
+        }
+
         private static void ProcessStaticEncounters(EncounterStatic8[] encounters, string versionName, Dictionary<string, List<EncounterInfo>> encounterData, GameStrings gameStrings, StreamWriter errorLogger)
         {
             foreach (var encounter in encounters)
@@ -75,6 +137,126 @@ namespace PKHeX.Core.MetLocationGenerator
 
                 // Use string.Empty instead of null for the fixedBall parameter
                 AddEncounterInfo(encounterData, gameStrings, errorLogger, encounter.Species, encounter.Form, locationName, encounter.Location, encounter.Level, encounter.Level, "Static", encounter.Shiny == Shiny.Never, encounter.Gift, encounter.FixedBall != Ball.None ? encounter.FixedBall.ToString() : string.Empty, versionName, canGigantamax);
+            }
+        }
+
+        private static void ProcessDenEncounters(Dictionary<string, List<EncounterInfo>> encounterData, GameStrings gameStrings, StreamWriter errorLogger)
+        {
+            const int denLocationId = Encounters8Nest.SharedNest; // 162 (Pokemon Den)
+            var locationName = gameStrings.GetLocationName(false, (ushort)denLocationId, 8, 8, GameVersion.SWSH);
+
+            errorLogger.WriteLine($"[{DateTime.Now}] Processing Pokémon Den encounters with location ID: {denLocationId} ({locationName})");
+
+            // Process all den encounters with a consistent "Max Raid" encounter type
+            ProcessNestEncounters(Encounters8Nest.Nest_SW, "Sword", encounterData, gameStrings, errorLogger, denLocationId, locationName);
+            ProcessNestEncounters(Encounters8Nest.Nest_SH, "Shield", encounterData, gameStrings, errorLogger, denLocationId, locationName);
+            ProcessDistributionEncounters(Encounters8Nest.Dist_SW, "Sword", encounterData, gameStrings, errorLogger, denLocationId, locationName);
+            ProcessDistributionEncounters(Encounters8Nest.Dist_SH, "Shield", encounterData, gameStrings, errorLogger, denLocationId, locationName);
+            ProcessCrystalEncounters(Encounters8Nest.Crystal_SWSH, encounterData, gameStrings, errorLogger, denLocationId, locationName);
+        }
+
+        private static void ProcessNestEncounters(EncounterStatic8N[] encounters, string versionName,
+            Dictionary<string, List<EncounterInfo>> encounterData, GameStrings gameStrings,
+            StreamWriter errorLogger, int locationId, string locationName)
+        {
+            foreach (var encounter in encounters)
+            {
+                bool canGigantamax = Gigantamax.CanToggle(encounter.Species, encounter.Form) || encounter.CanGigantamax;
+                bool isShinyLocked = encounter.Shiny == Shiny.Never;
+
+                // For standard nest encounters, min and max level are the same
+                int minLevel = encounter.Level;
+                int maxLevel = encounter.Level;
+
+                // Use AddSingleEncounterInfo instead of AddEncounterInfo to bypass evolution processing
+                AddSingleEncounterInfo(
+                    encounterData,
+                    gameStrings,
+                    errorLogger,
+                    encounter.Species,
+                    encounter.Form,
+                    locationName,
+                    locationId,
+                    minLevel,
+                    maxLevel,
+                    "Max Raid", // Consistent type
+                    isShinyLocked,
+                    false,
+                    string.Empty,
+                    versionName,
+                    canGigantamax
+                );
+            }
+        }
+
+        private static void ProcessDistributionEncounters(EncounterStatic8ND[] encounters, string versionName,
+            Dictionary<string, List<EncounterInfo>> encounterData, GameStrings gameStrings,
+            StreamWriter errorLogger, int locationId, string locationName)
+        {
+            foreach (var encounter in encounters)
+            {
+                bool canGigantamax = Gigantamax.CanToggle(encounter.Species, encounter.Form) || encounter.CanGigantamax;
+                bool isShinyLocked = encounter.Shiny == Shiny.Never;
+
+                // For distribution encounters, min and max level are the same
+                int minLevel = encounter.Level;
+                int maxLevel = encounter.Level;
+
+                // Use AddSingleEncounterInfo instead of AddEncounterInfo to bypass evolution processing
+                AddSingleEncounterInfo(
+                    encounterData,
+                    gameStrings,
+                    errorLogger,
+                    encounter.Species,
+                    encounter.Form,
+                    locationName,
+                    locationId,
+                    minLevel,
+                    maxLevel,
+                    "Max Raid", // Consistent type
+                    isShinyLocked,
+                    false,
+                    string.Empty,
+                    versionName,
+                    canGigantamax
+                );
+            }
+        }
+
+        private static void ProcessCrystalEncounters(EncounterStatic8NC[] encounters,
+            Dictionary<string, List<EncounterInfo>> encounterData, GameStrings gameStrings,
+            StreamWriter errorLogger, int locationId, string locationName)
+        {
+            foreach (var encounter in encounters)
+            {
+                string versionName = encounter.Version == GameVersion.SW ? "Sword" :
+                                     encounter.Version == GameVersion.SH ? "Shield" : "Both";
+
+                bool canGigantamax = Gigantamax.CanToggle(encounter.Species, encounter.Form) || encounter.CanGigantamax;
+                bool isShinyLocked = encounter.Shiny == Shiny.Never;
+
+                // For crystal encounters, min and max level are the same
+                int minLevel = encounter.Level;
+                int maxLevel = encounter.Level;
+
+                // Use AddSingleEncounterInfo instead of AddEncounterInfo to bypass evolution processing
+                AddSingleEncounterInfo(
+                    encounterData,
+                    gameStrings,
+                    errorLogger,
+                    encounter.Species,
+                    encounter.Form,
+                    locationName,
+                    locationId,
+                    minLevel,
+                    maxLevel,
+                    "Max Raid", // Consistent type
+                    isShinyLocked,
+                    false,
+                    string.Empty,
+                    versionName,
+                    canGigantamax
+                );
             }
         }
 

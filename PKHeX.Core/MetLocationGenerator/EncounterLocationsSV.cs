@@ -27,6 +27,9 @@ namespace PKHeX.Core.MetLocationGenerator
                 // Process regular encounter slots
                 ProcessRegularEncounters(encounterData, gameStrings, pt, errorLogger);
 
+                // Process Eggs
+                ProcessEggMetLocations(encounterData, gameStrings, pt, errorLogger);
+
                 // Process 7-Star Raid encounters
                 ProcessSevenStarRaids(encounterData, gameStrings, pt, errorLogger);
 
@@ -60,6 +63,58 @@ namespace PKHeX.Core.MetLocationGenerator
                 errorLogger.WriteLine($"[{DateTime.Now}] An error occurred: {ex.Message}");
                 errorLogger.WriteLine($"Stack Trace: {ex.StackTrace}");
                 throw;
+            }
+        }
+
+        private static void ProcessEggMetLocations(Dictionary<string, List<EncounterInfo>> encounterData, GameStrings gameStrings, PersonalTable9SV pt, StreamWriter errorLogger)
+        {
+            const int eggMetLocationId = 60005; // Picnic
+            const string locationName = "a Picnic";
+
+            errorLogger.WriteLine($"[{DateTime.Now}] Processing egg met locations with location ID: {eggMetLocationId} ({locationName})");
+
+            for (ushort species = 1; species < pt.MaxSpeciesID; species++)
+            {
+                var personalInfo = pt.GetFormEntry(species, 0);
+                if (personalInfo is null || !personalInfo.IsPresentInGame)
+                    continue;
+
+                // Skip species that can't breed (Undiscovered egg group)
+                if (personalInfo.EggGroup1 == 15 || personalInfo.EggGroup2 == 15)
+                    continue;
+
+                // For each valid form
+                byte formCount = personalInfo.FormCount;
+                for (byte form = 0; form < formCount; form++)
+                {
+                    var formInfo = pt.GetFormEntry(species, form);
+                    if (formInfo is null || !formInfo.IsPresentInGame)
+                        continue;
+
+                    // Skip forms that can't breed
+                    if (formInfo.EggGroup1 == 15 || formInfo.EggGroup2 == 15)
+                        continue;
+
+                    // Eggs hatch at level 1
+                    AddSingleEncounterInfo(
+                        encounterData,
+                        gameStrings,
+                        errorLogger,
+                        species,
+                        form,
+                        locationName,
+                        eggMetLocationId,
+                        1, // Min level
+                        1, // Max level
+                        "Egg", // Encounter type
+                        false, // Eggs are never shiny locked in SV
+                        true, // Eggs are considered "gift" Pokémon
+                        string.Empty, // No fixed ball for eggs
+                        "Both", // Available in both versions
+                        SizeType9.RANDOM,
+                        0
+                    );
+                }
             }
         }
 
