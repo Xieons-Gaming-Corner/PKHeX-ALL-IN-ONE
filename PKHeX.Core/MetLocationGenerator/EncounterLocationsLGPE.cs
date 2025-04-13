@@ -23,16 +23,13 @@ namespace PKHeX.Core.MetLocationGenerator
 
                 var encounterData = new Dictionary<string, List<EncounterInfo>>();
 
-                // Process regular encounter slots
                 ProcessEncounterSlots(Encounters7GG.SlotsGP, "Let's Go Pikachu", encounterData, gameStrings, errorLogger);
                 ProcessEncounterSlots(Encounters7GG.SlotsGE, "Let's Go Eevee", encounterData, gameStrings, errorLogger);
 
-                // Process static encounters
                 ProcessStaticEncounters(Encounters7GG.Encounter_GG, "Both", encounterData, gameStrings, errorLogger);
                 ProcessStaticEncounters(Encounters7GG.StaticGP, "Let's Go Pikachu", encounterData, gameStrings, errorLogger);
                 ProcessStaticEncounters(Encounters7GG.StaticGE, "Let's Go Eevee", encounterData, gameStrings, errorLogger);
 
-                // Process trade encounters (including Alolan forms)
                 ProcessTradeEncounters(Encounters7GG.TradeGift_GG, "Both", encounterData, gameStrings, errorLogger);
                 ProcessTradeEncounters(Encounters7GG.TradeGift_GP, "Let's Go Pikachu", encounterData, gameStrings, errorLogger);
                 ProcessTradeEncounters(Encounters7GG.TradeGift_GE, "Let's Go Eevee", encounterData, gameStrings, errorLogger);
@@ -71,37 +68,8 @@ namespace PKHeX.Core.MetLocationGenerator
 
                 foreach (var slot in area.Slots)
                 {
-                    var speciesIndex = slot.Species;
-                    var form = slot.Form;
-
-                    var speciesName = gameStrings.specieslist[speciesIndex];
-                    if (string.IsNullOrEmpty(speciesName))
-                    {
-                        errorLogger.WriteLine($"[{DateTime.Now}] Empty species name for index {speciesIndex}. Skipping.");
-                        continue;
-                    }
-
-                    string dexNumber = speciesIndex.ToString();
-                    if (form > 0)
-                        dexNumber += $"-{form}";
-
-                    if (!encounterData.ContainsKey(dexNumber))
-                        encounterData[dexNumber] = new List<EncounterInfo>();
-
-                    encounterData[dexNumber].Add(new EncounterInfo
-                    {
-                        SpeciesName = speciesName,
-                        SpeciesIndex = speciesIndex,
-                        Form = form,
-                        LocationName = locationName,
-                        LocationId = locationId,
-                        MinLevel = slot.LevelMin,
-                        MaxLevel = slot.LevelMax,
-                        EncounterType = "Wild",
-                        EncounterVersion = versionName
-                    });
-
-                    errorLogger.WriteLine($"[{DateTime.Now}] Processed encounter: {speciesName} (Dex: {dexNumber}) at {locationName} (ID: {locationId}), Levels {slot.LevelMin}-{slot.LevelMax}");
+                    AddEncounterInfoWithEvolutions(encounterData, gameStrings, errorLogger, slot.Species, slot.Form,
+                        locationName, locationId, slot.LevelMin, slot.LevelMax, "Wild", false, string.Empty, versionName);
                 }
             }
         }
@@ -110,89 +78,134 @@ namespace PKHeX.Core.MetLocationGenerator
         {
             foreach (var encounter in encounters)
             {
-                var speciesIndex = encounter.Species;
-                var form = encounter.Form;
-
-                var speciesName = gameStrings.specieslist[speciesIndex];
-                if (string.IsNullOrEmpty(speciesName))
-                {
-                    errorLogger.WriteLine($"[{DateTime.Now}] Empty species name for index {speciesIndex}. Skipping.");
-                    continue;
-                }
-
                 var locationId = encounter.Location;
                 var locationName = gameStrings.GetLocationName(false, (ushort)locationId, 7, 7, GameVersion.GG);
                 if (string.IsNullOrEmpty(locationName))
                     locationName = $"Unknown Location {locationId}";
 
-                string dexNumber = speciesIndex.ToString();
-                if (form > 0)
-                    dexNumber += $"-{form}";
-
-                if (!encounterData.ContainsKey(dexNumber))
-                    encounterData[dexNumber] = new List<EncounterInfo>();
-
-                encounterData[dexNumber].Add(new EncounterInfo
-                {
-                    SpeciesName = speciesName,
-                    SpeciesIndex = speciesIndex,
-                    Form = form,
-                    LocationName = locationName,
-                    LocationId = locationId,
-                    MinLevel = encounter.Level,
-                    MaxLevel = encounter.Level,
-                    EncounterType = "Static",
-                    IsShinyLocked = encounter.Shiny == Shiny.Never,
-                    FixedBall = encounter.FixedBall != Ball.None ? encounter.FixedBall.ToString() : null,
-                    EncounterVersion = versionName
-                });
-
-                errorLogger.WriteLine($"[{DateTime.Now}] Processed static encounter: {speciesName} (Dex: {dexNumber}) at {locationName} (ID: {locationId}), Level {encounter.Level}");
+                AddEncounterInfoWithEvolutions(encounterData, gameStrings, errorLogger, encounter.Species, encounter.Form,
+                    locationName, locationId, encounter.Level, encounter.Level, "Static",
+                    encounter.Shiny == Shiny.Never,
+                    encounter.FixedBall != Ball.None ? encounter.FixedBall.ToString() : string.Empty,
+                    versionName);
             }
         }
 
         private static void ProcessTradeEncounters(EncounterTrade7b[] encounters, string versionName, Dictionary<string, List<EncounterInfo>> encounterData, GameStrings gameStrings, StreamWriter errorLogger)
         {
-            const int tradeLocationId = 30001; // Locations.LinkTrade6NPC
+            const int tradeLocationId = 30001;
             const string tradeLocationName = "a Link Trade (NPC)";
 
             foreach (var encounter in encounters)
             {
-                var speciesIndex = encounter.Species;
-                var form = encounter.Form;
+                AddEncounterInfoWithEvolutions(encounterData, gameStrings, errorLogger, encounter.Species, encounter.Form,
+                    tradeLocationName, tradeLocationId, encounter.Level, encounter.Level, "Trade",
+                    encounter.Shiny == Shiny.Never, encounter.FixedBall.ToString(), versionName);
+            }
+        }
 
-                var speciesName = gameStrings.specieslist[speciesIndex];
-                if (string.IsNullOrEmpty(speciesName))
+        private static void AddEncounterInfoWithEvolutions(Dictionary<string, List<EncounterInfo>> encounterData, GameStrings gameStrings,
+            StreamWriter errorLogger, int speciesIndex, int form, string locationName, int locationId,
+            int minLevel, int maxLevel, string encounterType, bool isShinyLocked, string fixedBall, string encounterVersion)
+        {
+            AddSingleEncounterInfo(encounterData, gameStrings, errorLogger, speciesIndex, form, locationName, locationId,
+                minLevel, maxLevel, encounterType, isShinyLocked, fixedBall, encounterVersion);
+
+            var processedForms = new HashSet<(int Species, int Form)> { ((int)speciesIndex, form) };
+            ProcessEvolutions(speciesIndex, form, minLevel, locationId, locationName, isShinyLocked,
+                fixedBall, encounterVersion, encounterType, encounterData, gameStrings, errorLogger, processedForms);
+        }
+
+        private static void AddSingleEncounterInfo(Dictionary<string, List<EncounterInfo>> encounterData, GameStrings gameStrings,
+            StreamWriter errorLogger, int speciesIndex, int form, string locationName, int locationId,
+            int minLevel, int maxLevel, string encounterType, bool isShinyLocked, string fixedBall, string encounterVersion)
+        {
+            string dexNumber = speciesIndex.ToString();
+            if (form > 0)
+                dexNumber += $"-{form}";
+
+            if (!encounterData.ContainsKey(dexNumber))
+                encounterData[dexNumber] = new List<EncounterInfo>();
+
+            var speciesName = gameStrings.specieslist[speciesIndex];
+            if (string.IsNullOrEmpty(speciesName))
+            {
+                errorLogger.WriteLine($"[{DateTime.Now}] Empty species name for index {speciesIndex}. Skipping.");
+                return;
+            }
+
+            encounterData[dexNumber].Add(new EncounterInfo
+            {
+                SpeciesName = speciesName,
+                SpeciesIndex = speciesIndex,
+                Form = form,
+                LocationName = locationName,
+                LocationId = locationId,
+                MinLevel = minLevel,
+                MaxLevel = maxLevel,
+                EncounterType = encounterType,
+                IsShinyLocked = isShinyLocked,
+                FixedBall = fixedBall,
+                EncounterVersion = encounterVersion
+            });
+
+            errorLogger.WriteLine($"[{DateTime.Now}] Processed encounter: {speciesName} (Dex: {dexNumber}) at {locationName} (ID: {locationId}), Levels {minLevel}-{maxLevel}, Type: {encounterType}");
+        }
+
+        private static void ProcessEvolutions(int speciesIndex, int form, int baseLevel, int locationId, string locationName,
+            bool isShinyLocked, string fixedBall, string versionName, string encounterType,
+            Dictionary<string, List<EncounterInfo>> encounterData, GameStrings gameStrings,
+            StreamWriter errorLogger, HashSet<(int Species, int Form)> processedForms)
+        {
+            var tree = EvolutionTree.GetEvolutionTree(EntityContext.Gen7b);
+            var evos = tree.Forward.GetForward((ushort)speciesIndex, (byte)form);
+
+            foreach (var evo in evos.Span)
+            {
+                int evolvedSpecies = evo.Species;
+                int evolvedForm = evo.Form;
+
+                if (!processedForms.Add((evolvedSpecies, evolvedForm)))
+                    continue;
+
+                var evolvedSpeciesName = gameStrings.specieslist[evolvedSpecies];
+                if (string.IsNullOrEmpty(evolvedSpeciesName))
                 {
-                    errorLogger.WriteLine($"[{DateTime.Now}] Empty species name for index {speciesIndex}. Skipping.");
+                    errorLogger.WriteLine($"[{DateTime.Now}] Empty species name for evolved index {evolvedSpecies}. Skipping.");
                     continue;
                 }
 
-                string dexNumber = speciesIndex.ToString();
-                if (form > 0)
-                    dexNumber += $"-{form}";
+                string evolvedDexNumber = evolvedSpecies.ToString();
+                if (evolvedForm > 0)
+                    evolvedDexNumber += $"-{evolvedForm}";
 
-                if (!encounterData.ContainsKey(dexNumber))
-                    encounterData[dexNumber] = new List<EncounterInfo>();
+                if (!encounterData.ContainsKey(evolvedDexNumber))
+                    encounterData[evolvedDexNumber] = new List<EncounterInfo>();
 
-                bool isShinyLocked = encounter.Shiny == Shiny.Never;
+                int minEvoLevel = evo.LevelUp > 0 ? evo.LevelUp : (evo.Method == EvolutionType.LevelUp ? evo.Argument : 1);
+                int minLevel = Math.Max(baseLevel, minEvoLevel);
 
-                encounterData[dexNumber].Add(new EncounterInfo
+                string evolvedEncounterType = $"{encounterType} (Evolved)";
+
+                encounterData[evolvedDexNumber].Add(new EncounterInfo
                 {
-                    SpeciesName = speciesName,
-                    SpeciesIndex = speciesIndex,
-                    Form = form,
-                    LocationName = tradeLocationName,
-                    LocationId = tradeLocationId,
-                    MinLevel = encounter.Level,
-                    MaxLevel = encounter.Level,
-                    EncounterType = "Trade",
-                    IsShinyLocked = isShinyLocked, 
-                    FixedBall = encounter.FixedBall.ToString(), // Always Poke ball for in-game trades
+                    SpeciesName = evolvedSpeciesName,
+                    SpeciesIndex = evolvedSpecies,
+                    Form = evolvedForm,
+                    LocationName = locationName,
+                    LocationId = locationId,
+                    MinLevel = minLevel,
+                    MaxLevel = 100,
+                    EncounterType = evolvedEncounterType,
+                    IsShinyLocked = isShinyLocked,
+                    FixedBall = fixedBall,
                     EncounterVersion = versionName
                 });
 
-                errorLogger.WriteLine($"[{DateTime.Now}] Processed trade encounter: {speciesName} (Dex: {dexNumber}) at {tradeLocationName} (ID: {tradeLocationId}), Level {encounter.Level}, ShinyLocked: {isShinyLocked}");
+                errorLogger.WriteLine($"[{DateTime.Now}] Processed evolved encounter: {evolvedSpeciesName} (Dex: {evolvedDexNumber}) at {locationName} (ID: {locationId}), Min Level {minLevel}, Type: {evolvedEncounterType}");
+
+                ProcessEvolutions(evolvedSpecies, evolvedForm, minLevel, locationId, locationName,
+                    isShinyLocked, fixedBall, versionName, encounterType, encounterData, gameStrings, errorLogger, processedForms);
             }
         }
 
@@ -208,7 +221,7 @@ namespace PKHeX.Core.MetLocationGenerator
             public string? EncounterType { get; set; }
             public bool IsShinyLocked { get; set; }
             public string? FixedBall { get; set; }
-            public string? EncounterVersion { get; set; } // "Let's Go Pikachu", "Let's Go Eevee", or "Both"
+            public string? EncounterVersion { get; set; }
         }
     }
 }

@@ -1559,7 +1559,7 @@ public partial class Main : Form
             string errorLogPath = Path.Combine(executableDirectory, "bdsp_encounters_error_log.txt");
 
             // Call the method to generate the encounters JSON for BDSP
-            EncounterDataBDSP.GenerateEncounterDataJSON(outputPath, errorLogPath);
+            EncounterLocationsBDSP.GenerateEncounterDataJSON(outputPath, errorLogPath);
 
             if (File.Exists(outputPath))
             {

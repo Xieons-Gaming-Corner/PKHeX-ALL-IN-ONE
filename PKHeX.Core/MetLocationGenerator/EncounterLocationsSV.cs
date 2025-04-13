@@ -5,492 +5,505 @@ using System.Text;
 using System.Text.Json;
 using System.Linq;
 
-namespace PKHeX.Core.MetLocationGenerator
+namespace PKHeX.Core.MetLocationGenerator;
+
+public static class EncounterLocationsSV
 {
-    public static class EncounterLocationsSV
+    public static void GenerateEncounterDataJSON(string outputPath, string errorLogPath)
     {
-        public static void GenerateEncounterDataJSON(string outputPath, string errorLogPath)
+        try
         {
-            try
-            {
-                using var errorLogger = new StreamWriter(errorLogPath, false, Encoding.UTF8);
-                errorLogger.WriteLine($"[{DateTime.Now}] Starting JSON generation process for encounters in Scarlet/Violet.");
+            using var errorLogger = new StreamWriter(errorLogPath, false, Encoding.UTF8);
+            errorLogger.WriteLine($"[{DateTime.Now}] Starting JSON generation process for encounters in Scarlet/Violet.");
 
-                var gameStrings = GameInfo.GetStrings("en");
-                errorLogger.WriteLine($"[{DateTime.Now}] Game strings loaded.");
+            var gameStrings = GameInfo.GetStrings("en");
+            errorLogger.WriteLine($"[{DateTime.Now}] Game strings loaded.");
 
-                var pt = PersonalTable.SV;
-                errorLogger.WriteLine($"[{DateTime.Now}] PersonalTable for SV loaded.");
+            var pt = PersonalTable.SV;
+            errorLogger.WriteLine($"[{DateTime.Now}] PersonalTable for SV loaded.");
 
-                var encounterData = new Dictionary<string, List<EncounterInfo>>();
+            var encounterData = new Dictionary<string, List<EncounterInfo>>();
 
-                // Process regular encounter slots
-                ProcessRegularEncounters(encounterData, gameStrings, pt, errorLogger);
+            // Process all encounter types
+            ProcessRegularEncounters(encounterData, gameStrings, pt, errorLogger);
+            ProcessEggMetLocations(encounterData, gameStrings, pt, errorLogger);
+            ProcessSevenStarRaids(encounterData, gameStrings, pt, errorLogger);
 
-                // Process Eggs
-                ProcessEggMetLocations(encounterData, gameStrings, pt, errorLogger);
+            ProcessStaticEncounters(Encounters9.Encounter_SV, "Both", encounterData, gameStrings, pt, errorLogger);
+            ProcessStaticEncounters(Encounters9.StaticSL, "Scarlet", encounterData, gameStrings, pt, errorLogger);
+            ProcessStaticEncounters(Encounters9.StaticVL, "Violet", encounterData, gameStrings, pt, errorLogger);
 
-                // Process 7-Star Raid encounters
-                ProcessSevenStarRaids(encounterData, gameStrings, pt, errorLogger);
+            ProcessFixedEncounters(encounterData, gameStrings, pt, errorLogger);
+            ProcessTeraRaidEncounters(encounterData, gameStrings, pt, errorLogger);
+            ProcessDistributionEncounters(encounterData, gameStrings, pt, errorLogger);
+            ProcessOutbreakEncounters(encounterData, gameStrings, pt, errorLogger);
 
-                // Process static encounters for both versions
-                ProcessStaticEncounters(Encounters9.Encounter_SV, "Both", encounterData, gameStrings, pt, errorLogger);
-                ProcessStaticEncounters(Encounters9.StaticSL, "Scarlet", encounterData, gameStrings, pt, errorLogger);
-                ProcessStaticEncounters(Encounters9.StaticVL, "Violet", encounterData, gameStrings, pt, errorLogger);
+            var jsonOptions = new JsonSerializerOptions { WriteIndented = true };
+            string jsonString = JsonSerializer.Serialize(encounterData, jsonOptions);
 
-                // Process fixed encounters
-                ProcessFixedEncounters(encounterData, gameStrings, pt, errorLogger);
+            File.WriteAllText(outputPath, jsonString, new UTF8Encoding(false));
 
-                // Process Tera Raid encounters
-                ProcessTeraRaidEncounters(encounterData, gameStrings, pt, errorLogger);
-
-                // Process distribution encounters
-                ProcessDistributionEncounters(encounterData, gameStrings, pt, errorLogger);
-
-                // Process outbreak encounters
-                ProcessOutbreakEncounters(encounterData, gameStrings, pt, errorLogger);
-
-                var jsonOptions = new JsonSerializerOptions { WriteIndented = true };
-                string jsonString = JsonSerializer.Serialize(encounterData, jsonOptions);
-
-                File.WriteAllText(outputPath, jsonString, new UTF8Encoding(false));
-
-                errorLogger.WriteLine($"[{DateTime.Now}] JSON file generated successfully without BOM at: {outputPath}");
-            }
-            catch (Exception ex)
-            {
-                using var errorLogger = new StreamWriter(errorLogPath, true, Encoding.UTF8);
-                errorLogger.WriteLine($"[{DateTime.Now}] An error occurred: {ex.Message}");
-                errorLogger.WriteLine($"Stack Trace: {ex.StackTrace}");
-                throw;
-            }
+            errorLogger.WriteLine($"[{DateTime.Now}] JSON file generated successfully without BOM at: {outputPath}");
         }
-
-        private static void ProcessEggMetLocations(Dictionary<string, List<EncounterInfo>> encounterData, GameStrings gameStrings, PersonalTable9SV pt, StreamWriter errorLogger)
+        catch (Exception ex)
         {
-            const int eggMetLocationId = 60005; // Picnic
-            const string locationName = "a Picnic";
-
-            errorLogger.WriteLine($"[{DateTime.Now}] Processing egg met locations with location ID: {eggMetLocationId} ({locationName})");
-
-            for (ushort species = 1; species < pt.MaxSpeciesID; species++)
-            {
-                var personalInfo = pt.GetFormEntry(species, 0);
-                if (personalInfo is null || !personalInfo.IsPresentInGame)
-                    continue;
-
-                // Skip species that can't breed (Undiscovered egg group)
-                if (personalInfo.EggGroup1 == 15 || personalInfo.EggGroup2 == 15)
-                    continue;
-
-                // For each valid form
-                byte formCount = personalInfo.FormCount;
-                for (byte form = 0; form < formCount; form++)
-                {
-                    var formInfo = pt.GetFormEntry(species, form);
-                    if (formInfo is null || !formInfo.IsPresentInGame)
-                        continue;
-
-                    // Skip forms that can't breed
-                    if (formInfo.EggGroup1 == 15 || formInfo.EggGroup2 == 15)
-                        continue;
-
-                    // Eggs hatch at level 1
-                    AddSingleEncounterInfo(
-                        encounterData,
-                        gameStrings,
-                        errorLogger,
-                        species,
-                        form,
-                        locationName,
-                        eggMetLocationId,
-                        1, // Min level
-                        1, // Max level
-                        "Egg", // Encounter type
-                        false, // Eggs are never shiny locked in SV
-                        true, // Eggs are considered "gift" Pokémon
-                        string.Empty, // No fixed ball for eggs
-                        "Both", // Available in both versions
-                        SizeType9.RANDOM,
-                        0
-                    );
-                }
-            }
+            using var errorLogger = new StreamWriter(errorLogPath, true, Encoding.UTF8);
+            errorLogger.WriteLine($"[{DateTime.Now}] An error occurred: {ex.Message}");
+            errorLogger.WriteLine($"Stack Trace: {ex.StackTrace}");
+            throw;
         }
+    }
 
-        private static void ProcessRegularEncounters(Dictionary<string, List<EncounterInfo>> encounterData, GameStrings gameStrings, PersonalTable9SV pt, StreamWriter errorLogger)
+    private static void ProcessEggMetLocations(Dictionary<string, List<EncounterInfo>> encounterData, GameStrings gameStrings,
+        PersonalTable9SV pt, StreamWriter errorLogger)
+    {
+        const int eggMetLocationId = 60005; // Picnic
+        const string locationName = "a Picnic";
+
+        errorLogger.WriteLine($"[{DateTime.Now}] Processing egg met locations with location ID: {eggMetLocationId} ({locationName})");
+
+        for (ushort species = 1; species < pt.MaxSpeciesID; species++)
         {
-            foreach (var area in Encounters9.Slots)
-            {
-                var locationId = area.Location;
-                var locationName = gameStrings.GetLocationName(false, (ushort)locationId, 9, 9, GameVersion.SV);
-                if (string.IsNullOrEmpty(locationName))
-                    locationName = $"Unknown Location {locationId}";
-
-                foreach (var slot in area.Slots)
-                {
-                    AddEncounterInfoWithEvolutions(encounterData, gameStrings, pt, errorLogger, slot.Species, slot.Form, locationName, locationId,
-                        slot.LevelMin, slot.LevelMax, "Wild", false, false, string.Empty, "Both", SizeType9.RANDOM, 0);
-                }
-            }
-        }
-
-        private static void ProcessSevenStarRaids(Dictionary<string, List<EncounterInfo>> encounterData, GameStrings gameStrings, PersonalTable9SV pt, StreamWriter errorLogger)
-        {
-            foreach (var encounter in Encounters9.Might)
-            {
-                var locationName = gameStrings.GetLocationName(false, (ushort)EncounterMight9.Location, 9, 9, GameVersion.SV);
-                if (string.IsNullOrEmpty(locationName))
-                    locationName = "A Crystal Cavern";
-
-                AddEncounterInfoWithEvolutions(encounterData, gameStrings, pt, errorLogger, encounter.Species, encounter.Form, locationName,
-                    EncounterMight9.Location, encounter.Level, encounter.Level, "7-Star Raid", encounter.Shiny == Shiny.Never,
-                    false, string.Empty, "Both", encounter.ScaleType, encounter.Scale);
-            }
-        }
-
-        private static void ProcessStaticEncounters(EncounterStatic9[] encounters, string versionName, Dictionary<string, List<EncounterInfo>> encounterData, GameStrings gameStrings, PersonalTable9SV pt, StreamWriter errorLogger)
-        {
-            foreach (var encounter in encounters)
-            {
-                var locationId = encounter.Location;
-                var locationName = gameStrings.GetLocationName(false, (ushort)locationId, 9, 9, GameVersion.SV);
-                if (string.IsNullOrEmpty(locationName))
-                    locationName = $"Unknown Location {locationId}";
-
-                AddEncounterInfoWithEvolutions(encounterData, gameStrings, pt, errorLogger, encounter.Species, encounter.Form, locationName, locationId,
-                    encounter.Level, encounter.Level, "Static", encounter.Shiny == Shiny.Never, false,
-                    encounter.FixedBall != Ball.None ? encounter.FixedBall.ToString() : string.Empty, versionName, SizeType9.RANDOM, 0);
-            }
-        }
-
-        private static void ProcessFixedEncounters(Dictionary<string, List<EncounterInfo>> encounterData, GameStrings gameStrings, PersonalTable9SV pt, StreamWriter errorLogger)
-        {
-            foreach (var encounter in Encounters9.Fixed)
-            {
-                var locationName = gameStrings.GetLocationName(false, (ushort)encounter.Location, 9, 9, GameVersion.SV);
-                if (string.IsNullOrEmpty(locationName))
-                    locationName = $"Unknown Location {encounter.Location}";
-
-                AddEncounterInfoWithEvolutions(encounterData, gameStrings, pt, errorLogger, encounter.Species, encounter.Form, locationName,
-                    encounter.Location, encounter.Level, encounter.Level, "Fixed", false, false, string.Empty, "Both", SizeType9.RANDOM, 0);
-            }
-        }
-
-        private static void ProcessTeraRaidEncounters(Dictionary<string, List<EncounterInfo>> encounterData, GameStrings gameStrings, PersonalTable9SV pt, StreamWriter errorLogger)
-        {
-            ProcessTeraRaidEncountersForGroup(Encounters9.TeraBase, encounterData, gameStrings, pt, errorLogger, "Paldea");
-            ProcessTeraRaidEncountersForGroup(Encounters9.TeraDLC1, encounterData, gameStrings, pt, errorLogger, "Kitakami");
-            ProcessTeraRaidEncountersForGroup(Encounters9.TeraDLC2, encounterData, gameStrings, pt, errorLogger, "Blueberry");
-        }
-
-        private static void ProcessTeraRaidEncountersForGroup(EncounterTera9[] encounters, Dictionary<string, List<EncounterInfo>> encounterData, GameStrings gameStrings, PersonalTable9SV pt, StreamWriter errorLogger, string groupName)
-        {
-            foreach (var encounter in encounters)
-            {
-                var locationName = gameStrings.GetLocationName(false, (ushort)EncounterTera9.Location, 9, 9, GameVersion.SV);
-                if (string.IsNullOrEmpty(locationName))
-                    locationName = "Tera Raid Den";
-
-                AddEncounterInfoWithEvolutions(encounterData, gameStrings, pt, errorLogger, encounter.Species, encounter.Form, locationName,
-                    EncounterTera9.Location, encounter.Level, encounter.Level, $"{encounter.Stars}★ Tera Raid {groupName}",
-                    encounter.Shiny == Shiny.Never, false, string.Empty,
-                    encounter.IsAvailableHostScarlet && encounter.IsAvailableHostViolet ? "Both" :
-                    (encounter.IsAvailableHostScarlet ? "Scarlet" : "Violet"), SizeType9.RANDOM, 0);
-            }
-        }
-
-        private static void ProcessDistributionEncounters(Dictionary<string, List<EncounterInfo>> encounterData, GameStrings gameStrings, PersonalTable9SV pt, StreamWriter errorLogger)
-        {
-            foreach (var encounter in Encounters9.Dist)
-            {
-                var locationName = gameStrings.GetLocationName(false, (ushort)EncounterDist9.Location, 9, 9, GameVersion.SV);
-                if (string.IsNullOrEmpty(locationName))
-                    locationName = "Distribution Raid Den";
-
-                var versionAvailability = GetVersionAvailability(encounter);
-
-                AddEncounterInfoWithEvolutions(encounterData, gameStrings, pt, errorLogger, encounter.Species, encounter.Form, locationName,
-                    EncounterDist9.Location, encounter.Level, encounter.Level, $"Distribution Raid {encounter.Stars}★",
-                    encounter.Shiny == Shiny.Never, false, string.Empty, versionAvailability, encounter.ScaleType, encounter.Scale);
-            }
-        }
-
-        private static string GetVersionAvailability(EncounterDist9 encounter)
-        {
-            bool availableInScarlet = encounter.RandRate0TotalScarlet > 0 || encounter.RandRate1TotalScarlet > 0 ||
-                                    encounter.RandRate2TotalScarlet > 0 || encounter.RandRate3TotalScarlet > 0;
-
-            bool availableInViolet = encounter.RandRate0TotalViolet > 0 || encounter.RandRate1TotalViolet > 0 ||
-                                   encounter.RandRate2TotalViolet > 0 || encounter.RandRate3TotalViolet > 0;
-
-            if (availableInScarlet && availableInViolet)
-                return "Both";
-            if (availableInScarlet)
-                return "Scarlet";
-            if (availableInViolet)
-                return "Violet";
-
-            return "Unknown";
-        }
-
-        private static void ProcessOutbreakEncounters(Dictionary<string, List<EncounterInfo>> encounterData, GameStrings gameStrings, PersonalTable9SV pt, StreamWriter errorLogger)
-        {
-            foreach (var encounter in Encounters9.Outbreak)
-            {
-                var locationName = gameStrings.GetLocationName(false, encounter.Location, 9, 9, GameVersion.SV);
-                if (string.IsNullOrEmpty(locationName))
-                    locationName = $"Unknown Location {encounter.Location}";
-
-                AddEncounterInfoWithEvolutions(encounterData, gameStrings, pt, errorLogger, encounter.Species, encounter.Form, locationName,
-                    encounter.Location, encounter.LevelMin, encounter.LevelMax, "Outbreak", encounter.Shiny == Shiny.Never,
-                    false, string.Empty, "Both", encounter.IsForcedScaleRange ? SizeType9.VALUE : SizeType9.RANDOM,
-                    encounter.IsForcedScaleRange ? encounter.ScaleMin : (byte)0);
-            }
-        }
-
-        private static void AddEncounterInfoWithEvolutions(Dictionary<string, List<EncounterInfo>> encounterData, GameStrings gameStrings,
-            PersonalTable9SV pt, StreamWriter errorLogger, ushort speciesIndex, byte form, string locationName, int locationId,
-            int minLevel, int maxLevel, string encounterType, bool isShinyLocked, bool isGift, string fixedBall,
-            string encounterVersion, SizeType9 sizeType, byte sizeValue)
-        {
-            var personalInfo = pt.GetFormEntry(speciesIndex, form);
+            var personalInfo = pt.GetFormEntry(species, 0);
             if (personalInfo is null || !personalInfo.IsPresentInGame)
+                continue;
+
+            // Skip species that can't breed (Undiscovered egg group)
+            if (personalInfo.EggGroup1 == 15 || personalInfo.EggGroup2 == 15)
+                continue;
+
+            // For each valid form
+            byte formCount = personalInfo.FormCount;
+            for (byte form = 0; form < formCount; form++)
             {
-                errorLogger.WriteLine($"[{DateTime.Now}] Species {speciesIndex} form {form} not present in SV. Skipping.");
-                return;
-            }
-
-            // Process base species
-            AddSingleEncounterInfo(encounterData, gameStrings, errorLogger, speciesIndex, form, locationName, locationId,
-                minLevel, maxLevel, encounterType, isShinyLocked, isGift, fixedBall, encounterVersion, sizeType, sizeValue);
-
-            // Track processed species/forms to avoid duplicates
-            var processedForms = new HashSet<(ushort Species, byte Form)>();
-            processedForms.Add((speciesIndex, form));
-
-            // Process all evolutions recursively
-            ProcessEvolutionLine(encounterData, gameStrings, pt, errorLogger, speciesIndex, form, locationName, locationId,
-                minLevel, encounterType, isShinyLocked, isGift, fixedBall, encounterVersion, sizeType, sizeValue, processedForms);
-        }
-
-        private static int GetMinEvolutionLevel(ushort baseSpecies, ushort evolvedSpecies)
-        {
-            var tree = EvolutionTree.Evolves9;
-            var pk = new PK9 { Species = baseSpecies, Form = 0, CurrentLevel = 100, Version = GameVersion.VL };
-            int maxLevel = 1;
-
-            var evos = tree.Forward.GetForward(baseSpecies, 0);
-            foreach (var evo in evos.Span)
-            {
-                if (evo.Species == evolvedSpecies)
-                {
-                    maxLevel = Math.Max(maxLevel, Math.Max(evo.Level, evo.LevelUp));
-                }
-                else
-                {
-                    var nextEvos = tree.Forward.GetForward(evo.Species, 0);
-                    foreach (var nextEvo in nextEvos.Span)
-                    {
-                        if (nextEvo.Species == evolvedSpecies)
-                        {
-                            int evoLevel = Math.Max(evo.Level, evo.LevelUp);
-                            int nextEvoLevel = Math.Max(nextEvo.Level, nextEvo.LevelUp);
-                            maxLevel = Math.Max(maxLevel, Math.Max(evoLevel, nextEvoLevel));
-                        }
-                    }
-                }
-            }
-
-            return maxLevel;
-        }
-
-        private static void ProcessEvolutionLine(Dictionary<string, List<EncounterInfo>> encounterData, GameStrings gameStrings,
-            PersonalTable9SV pt, StreamWriter errorLogger, ushort species, byte form, string locationName, int locationId,
-            int baseLevel, string encounterType, bool isShinyLocked, bool isGift, string fixedBall, string encounterVersion,
-            SizeType9 sizeType, byte sizeValue, HashSet<(ushort Species, byte Form)> processedForms)
-        {
-            var personalInfo = pt.GetFormEntry(species, form);
-            if (personalInfo == null || !personalInfo.IsPresentInGame)
-                return;
-
-            var nextEvolutions = TraverseEvolutions(species, form, pt, processedForms);
-            foreach (var (evoSpecies, evoForm) in nextEvolutions)
-            {
-                // Skip if we've already processed this form
-                if (!processedForms.Add((evoSpecies, evoForm)))
+                var formInfo = pt.GetFormEntry(species, form);
+                if (formInfo is null || !formInfo.IsPresentInGame)
                     continue;
 
-                var evoPersonalInfo = pt.GetFormEntry(evoSpecies, evoForm);
-                if (evoPersonalInfo == null || !evoPersonalInfo.IsPresentInGame)
+                // Skip forms that can't breed
+                if (formInfo.EggGroup1 == 15 || formInfo.EggGroup2 == 15)
                     continue;
 
-                // Get minimum evolution level
-                var evolutionMinLevel = GetMinEvolutionLevel(species, evoSpecies);
-                // Use the higher of the evolution requirement and base encounter level
-                var minLevel = Math.Max(baseLevel, evolutionMinLevel);
-
-                AddSingleEncounterInfo(encounterData, gameStrings, errorLogger, evoSpecies, evoForm, locationName, locationId,
-                    minLevel, minLevel, encounterType, isShinyLocked, isGift, fixedBall, encounterVersion, sizeType, sizeValue);
-
-                // Recursively process next evolutions
-                ProcessEvolutionLine(encounterData, gameStrings, pt, errorLogger, evoSpecies, evoForm, locationName, locationId,
-                    minLevel, encounterType, isShinyLocked, isGift, fixedBall, encounterVersion, sizeType, sizeValue, processedForms);
+                // Eggs hatch at level 1
+                AddSingleEncounterInfo(
+                    encounterData,
+                    gameStrings,
+                    errorLogger,
+                    species,
+                    form,
+                    locationName,
+                    eggMetLocationId,
+                    1, // Min level
+                    1, // Max level
+                    "Egg", // Encounter type
+                    false, // Eggs are never shiny locked in SV
+                    true, // Eggs are considered "gift" Pokémon
+                    string.Empty, // No fixed ball for eggs
+                    "Both", // Available in both versions
+                    SizeType9.RANDOM,
+                    0
+                );
             }
         }
+    }
 
-        private static List<(ushort Species, byte Form)> TraverseEvolutions(ushort species, byte form, PersonalTable9SV pt, HashSet<(ushort Species, byte Form)> processedForms)
+    private static void ProcessRegularEncounters(Dictionary<string, List<EncounterInfo>> encounterData, GameStrings gameStrings,
+        PersonalTable9SV pt, StreamWriter errorLogger)
+    {
+        foreach (var area in Encounters9.Slots)
         {
-            var results = new List<(ushort Species, byte Form)>();
-            var personalInfo = pt.GetFormEntry(species, form);
+            var locationId = area.Location;
+            var locationName = gameStrings.GetLocationName(false, (ushort)locationId, 9, 9, GameVersion.SV)
+                ?? $"Unknown Location {locationId}";
 
-            if (personalInfo == null)
-                return results;
-            // Get evolutions (each species can have different forms)
-            for (ushort evoSpecies = 1; evoSpecies < pt.MaxSpeciesID; evoSpecies++)
+            foreach (var slot in area.Slots)
             {
-                if (processedForms.Contains((evoSpecies, 0)))
-                    continue;
-
-                var evoPersonalInfo = pt.GetFormEntry(evoSpecies, 0);
-                if (evoPersonalInfo == null || !evoPersonalInfo.IsPresentInGame)
-                    continue;
-
-                // Check if this species evolves from our current species
-                if (evoPersonalInfo.HatchSpecies == species)
-                {
-                    // Get all valid forms for this evolved species
-                    byte formCount = evoPersonalInfo.FormCount;
-                    for (byte evoForm = 0; evoForm < formCount; evoForm++)
-                    {
-                        var formInfo = pt.GetFormEntry(evoSpecies, evoForm);
-                        if (formInfo != null && formInfo.IsPresentInGame)
-                        {
-                            results.Add((evoSpecies, evoForm));
-                        }
-                    }
-                }
-            }
-
-            return results;
-        }
-
-        private static string CombineVersions(string version1, string version2)
-        {
-            if (version1 == "Both" || version2 == "Both")
-                return "Both";
-            if ((version1 == "Scarlet" && version2 == "Violet") ||
-                (version1 == "Violet" && version2 == "Scarlet"))
-            {
-                return "Both";
-            }
-
-            return version1; // Return existing version if they're the same
-        }
-
-        private static void AddSingleEncounterInfo(Dictionary<string, List<EncounterInfo>> encounterData, GameStrings gameStrings,
-            StreamWriter errorLogger, ushort speciesIndex, byte form, string locationName, int locationId, int minLevel, int maxLevel,
-            string encounterType, bool isShinyLocked, bool isGift, string fixedBall, string encounterVersion,
-            SizeType9 sizeType, byte sizeValue)
-        {
-            string dexNumber = speciesIndex.ToString();
-            if (form > 0)
-                dexNumber += $"-{form}";
-
-            if (!encounterData.ContainsKey(dexNumber))
-                encounterData[dexNumber] = new List<EncounterInfo>();
-
-            var personalInfo = PersonalTable.SV.GetFormEntry(speciesIndex, form);
-            string genderRatio = DetermineGenderRatio(personalInfo);
-
-            var existingEncounter = encounterData[dexNumber].FirstOrDefault(e =>
-                e.LocationId == locationId &&
-                e.SpeciesIndex == speciesIndex &&
-                e.Form == form &&
-                e.EncounterType == encounterType &&
-                e.Gender == genderRatio);
-
-            if (existingEncounter != null)
-            {
-                // If this is the same species in the same location, combine versions and keep lowest level
-                existingEncounter.MinLevel = Math.Min(existingEncounter.MinLevel, minLevel);
-                existingEncounter.MaxLevel = Math.Max(existingEncounter.MaxLevel, maxLevel);
-
-                // Ensure non-null values for both version parameters
-                string existingVersion = existingEncounter.EncounterVersion ?? string.Empty;
-                string newEncounterVersion = encounterVersion ?? string.Empty;
-                existingEncounter.EncounterVersion = CombineVersions(existingVersion, newEncounterVersion);
-
-                errorLogger.WriteLine($"[{DateTime.Now}] Updated existing encounter: {gameStrings.specieslist[speciesIndex]} " +
-                    $"(Dex: {dexNumber}) at {locationName} (ID: {locationId}), Levels {existingEncounter.MinLevel}-{existingEncounter.MaxLevel}, " +
-                    $"Type: {encounterType}, Version: {existingEncounter.EncounterVersion}, Gender: {genderRatio}");
-            }
-            else
-            {
-                encounterData[dexNumber].Add(new EncounterInfo
-                {
-                    SpeciesName = gameStrings.specieslist[speciesIndex],
-                    SpeciesIndex = speciesIndex,
-                    Form = form,
-                    LocationName = locationName,
-                    LocationId = locationId,
-                    MinLevel = minLevel,
-                    MaxLevel = maxLevel,
-                    EncounterType = encounterType,
-                    IsShinyLocked = isShinyLocked,
-                    IsGift = isGift,
-                    FixedBall = fixedBall,
-                    EncounterVersion = encounterVersion,
-                    SizeType = sizeType,
-                    SizeValue = sizeValue,
-                    Gender = genderRatio
-                });
-
-                errorLogger.WriteLine($"[{DateTime.Now}] Processed new encounter: {gameStrings.specieslist[speciesIndex]} " +
-                    $"(Dex: {dexNumber}) at {locationName} (ID: {locationId}), Levels {minLevel}-{maxLevel}, " +
-                    $"Type: {encounterType}, Version: {encounterVersion}, Gender: {genderRatio}");
+                AddEncounterInfoWithEvolutions(encounterData, gameStrings, pt, errorLogger, slot.Species, slot.Form,
+                    locationName, locationId, slot.LevelMin, slot.LevelMax, "Wild", false, false,
+                    string.Empty, "Both", SizeType9.RANDOM, 0);
             }
         }
+    }
 
-        private static string DetermineGenderRatio(IPersonalInfo personalInfo)
+    private static void ProcessSevenStarRaids(Dictionary<string, List<EncounterInfo>> encounterData, GameStrings gameStrings,
+        PersonalTable9SV pt, StreamWriter errorLogger)
+    {
+        foreach (var encounter in Encounters9.Might)
         {
-            if (personalInfo == null)
-                return "Unknown";
+            var locationName = gameStrings.GetLocationName(false, (ushort)EncounterMight9.Location, 9, 9, GameVersion.SV)
+                ?? "A Crystal Cavern";
 
-            if (personalInfo.Genderless)
-                return "Genderless";
-            if (personalInfo.OnlyFemale)
-                return "Female";
-            if (personalInfo.OnlyMale)
-                return "Male";
+            AddEncounterInfoWithEvolutions(encounterData, gameStrings, pt, errorLogger, encounter.Species, encounter.Form,
+                locationName, EncounterMight9.Location, encounter.Level, encounter.Level, "7-Star Raid",
+                encounter.Shiny == Shiny.Never, false, string.Empty, "Both", encounter.ScaleType, encounter.Scale);
+        }
+    }
 
-            // Handle regular gender ratios
-            return personalInfo.Gender switch
+    private static void ProcessStaticEncounters(EncounterStatic9[] encounters, string versionName,
+        Dictionary<string, List<EncounterInfo>> encounterData, GameStrings gameStrings, PersonalTable9SV pt, StreamWriter errorLogger)
+    {
+        foreach (var encounter in encounters)
+        {
+            var locationId = encounter.Location;
+            var locationName = gameStrings.GetLocationName(false, (ushort)locationId, 9, 9, GameVersion.SV)
+                ?? $"Unknown Location {locationId}";
+
+            string fixedBall = encounter.FixedBall != Ball.None ? encounter.FixedBall.ToString() : string.Empty;
+            AddEncounterInfoWithEvolutions(encounterData, gameStrings, pt, errorLogger, encounter.Species, encounter.Form,
+                locationName, locationId, encounter.Level, encounter.Level, "Static",
+                encounter.Shiny == Shiny.Never, false, fixedBall, versionName, SizeType9.RANDOM, 0);
+        }
+    }
+
+    private static void ProcessFixedEncounters(Dictionary<string, List<EncounterInfo>> encounterData, GameStrings gameStrings,
+        PersonalTable9SV pt, StreamWriter errorLogger)
+    {
+        foreach (var encounter in Encounters9.Fixed)
+        {
+            var locationName = gameStrings.GetLocationName(false, (ushort)encounter.Location, 9, 9, GameVersion.SV)
+                ?? $"Unknown Location {encounter.Location}";
+
+            AddEncounterInfoWithEvolutions(encounterData, gameStrings, pt, errorLogger, encounter.Species, encounter.Form,
+                locationName, encounter.Location, encounter.Level, encounter.Level, "Fixed",
+                false, false, string.Empty, "Both", SizeType9.RANDOM, 0);
+        }
+    }
+
+    private static void ProcessTeraRaidEncounters(Dictionary<string, List<EncounterInfo>> encounterData, GameStrings gameStrings,
+        PersonalTable9SV pt, StreamWriter errorLogger)
+    {
+        ProcessTeraRaidEncountersForGroup(Encounters9.TeraBase, encounterData, gameStrings, pt, errorLogger, "Paldea");
+        ProcessTeraRaidEncountersForGroup(Encounters9.TeraDLC1, encounterData, gameStrings, pt, errorLogger, "Kitakami");
+        ProcessTeraRaidEncountersForGroup(Encounters9.TeraDLC2, encounterData, gameStrings, pt, errorLogger, "Blueberry");
+    }
+
+    private static void ProcessTeraRaidEncountersForGroup(EncounterTera9[] encounters,
+        Dictionary<string, List<EncounterInfo>> encounterData, GameStrings gameStrings,
+        PersonalTable9SV pt, StreamWriter errorLogger, string groupName)
+    {
+        foreach (var encounter in encounters)
+        {
+            var locationName = gameStrings.GetLocationName(false, (ushort)EncounterTera9.Location, 9, 9, GameVersion.SV)
+                ?? "Tera Raid Den";
+
+            string versionAvailability = (encounter.IsAvailableHostScarlet, encounter.IsAvailableHostViolet) switch
             {
-                0 => "Male",         // 100% Male
-                254 => "Female",     // 100% Female
-                255 => "Genderless", // Genderless
-                _ => "Male, Female"  // Mixed gender ratio 
+                (true, true) => "Both",
+                (true, false) => "Scarlet",
+                (false, true) => "Violet",
+                _ => "Unknown"
             };
+
+            AddEncounterInfoWithEvolutions(encounterData, gameStrings, pt, errorLogger, encounter.Species, encounter.Form,
+                locationName, EncounterTera9.Location, encounter.Level, encounter.Level,
+                $"{encounter.Stars}★ Tera Raid {groupName}", encounter.Shiny == Shiny.Never, false,
+                string.Empty, versionAvailability, SizeType9.RANDOM, 0);
+        }
+    }
+
+    private static void ProcessDistributionEncounters(Dictionary<string, List<EncounterInfo>> encounterData, GameStrings gameStrings,
+        PersonalTable9SV pt, StreamWriter errorLogger)
+    {
+        foreach (var encounter in Encounters9.Dist)
+        {
+            var locationName = gameStrings.GetLocationName(false, (ushort)EncounterDist9.Location, 9, 9, GameVersion.SV)
+                ?? "Distribution Raid Den";
+
+            var versionAvailability = GetVersionAvailability(encounter);
+
+            AddEncounterInfoWithEvolutions(encounterData, gameStrings, pt, errorLogger, encounter.Species, encounter.Form,
+                locationName, EncounterDist9.Location, encounter.Level, encounter.Level,
+                $"Distribution Raid {encounter.Stars}★", encounter.Shiny == Shiny.Never, false,
+                string.Empty, versionAvailability, encounter.ScaleType, encounter.Scale);
+        }
+    }
+
+    private static string GetVersionAvailability(EncounterDist9 encounter)
+    {
+        bool availableInScarlet = encounter.RandRate0TotalScarlet > 0 || encounter.RandRate1TotalScarlet > 0 ||
+                                  encounter.RandRate2TotalScarlet > 0 || encounter.RandRate3TotalScarlet > 0;
+
+        bool availableInViolet = encounter.RandRate0TotalViolet > 0 || encounter.RandRate1TotalViolet > 0 ||
+                                encounter.RandRate2TotalViolet > 0 || encounter.RandRate3TotalViolet > 0;
+
+        return (availableInScarlet, availableInViolet) switch
+        {
+            (true, true) => "Both",
+            (true, false) => "Scarlet",
+            (false, true) => "Violet",
+            _ => "Unknown"
+        };
+    }
+
+    private static void ProcessOutbreakEncounters(Dictionary<string, List<EncounterInfo>> encounterData, GameStrings gameStrings,
+        PersonalTable9SV pt, StreamWriter errorLogger)
+    {
+        foreach (var encounter in Encounters9.Outbreak)
+        {
+            var locationName = gameStrings.GetLocationName(false, encounter.Location, 9, 9, GameVersion.SV)
+                ?? $"Unknown Location {encounter.Location}";
+
+            SizeType9 sizeType = encounter.IsForcedScaleRange ? SizeType9.VALUE : SizeType9.RANDOM;
+            byte sizeValue = encounter.IsForcedScaleRange ? encounter.ScaleMin : (byte)0;
+
+            AddEncounterInfoWithEvolutions(encounterData, gameStrings, pt, errorLogger, encounter.Species, encounter.Form,
+                locationName, encounter.Location, encounter.LevelMin, encounter.LevelMax, "Outbreak",
+                encounter.Shiny == Shiny.Never, false, string.Empty, "Both", sizeType, sizeValue);
+        }
+    }
+
+    private static void AddEncounterInfoWithEvolutions(Dictionary<string, List<EncounterInfo>> encounterData, GameStrings gameStrings,
+        PersonalTable9SV pt, StreamWriter errorLogger, ushort speciesIndex, byte form, string locationName, int locationId,
+        int minLevel, int maxLevel, string encounterType, bool isShinyLocked, bool isGift, string fixedBall,
+        string encounterVersion, SizeType9 sizeType, byte sizeValue)
+    {
+        var personalInfo = pt.GetFormEntry(speciesIndex, form);
+        if (personalInfo is null || !personalInfo.IsPresentInGame)
+        {
+            errorLogger.WriteLine($"[{DateTime.Now}] Species {speciesIndex} form {form} not present in SV. Skipping.");
+            return;
         }
 
-        private class EncounterInfo
+        // Process base species
+        AddSingleEncounterInfo(encounterData, gameStrings, errorLogger, speciesIndex, form, locationName, locationId,
+            minLevel, maxLevel, encounterType, isShinyLocked, isGift, fixedBall, encounterVersion, sizeType, sizeValue);
+
+        // Track processed species/forms to avoid duplicates
+        var processedForms = new HashSet<(ushort Species, byte Form)> { (speciesIndex, form) };
+
+        // Process all evolutions recursively
+        ProcessEvolutionLine(encounterData, gameStrings, pt, errorLogger, speciesIndex, form, locationName, locationId,
+            minLevel, maxLevel, encounterType, isShinyLocked, isGift, fixedBall, encounterVersion, sizeType, sizeValue, processedForms);
+    }
+
+    private static int GetMinEvolutionLevel(ushort baseSpecies, ushort evolvedSpecies)
+    {
+        var tree = EvolutionTree.GetEvolutionTree(EntityContext.Gen9);
+        int minLevel = 1;
+
+        // Check direct evolutions first
+        var evos = tree.Forward.GetForward(baseSpecies, 0);
+        foreach (var evo in evos.Span)
         {
-            public string? SpeciesName { get; set; }
-            public int SpeciesIndex { get; set; }
-            public int Form { get; set; }
-            public string? LocationName { get; set; }
-            public int LocationId { get; set; }
-            public int MinLevel { get; set; }
-            public int MaxLevel { get; set; }
-            public string? EncounterType { get; set; }
-            public bool IsShinyLocked { get; set; }
-            public bool IsGift { get; set; }
-            public string? FixedBall { get; set; }
-            public string? EncounterVersion { get; set; }
-            public SizeType9 SizeType { get; set; }
-            public byte SizeValue { get; set; }
-            public string? Gender { get; set; }
+            if (evo.Species == evolvedSpecies)
+            {
+                // Direct evolution - use level requirement
+                int levelRequirement = evo.LevelUp > 0 ? evo.LevelUp :
+                                       evo.Method == EvolutionType.LevelUp ? evo.Argument : 1;
+                minLevel = Math.Max(minLevel, levelRequirement);
+                return minLevel;
+            }
+
+            // Check for indirect evolution (evolution chain)
+            var secondaryEvos = tree.Forward.GetForward((ushort)evo.Species, 0);
+            foreach (var secondEvo in secondaryEvos.Span)
+            {
+                if (secondEvo.Species == evolvedSpecies)
+                {
+                    // Found a two-step evolution chain
+                    int firstEvolutionLevel = evo.LevelUp > 0 ? evo.LevelUp :
+                                              evo.Method == EvolutionType.LevelUp ? evo.Argument : 1;
+                    int secondEvolutionLevel = secondEvo.LevelUp > 0 ? secondEvo.LevelUp :
+                                               secondEvo.Method == EvolutionType.LevelUp ? secondEvo.Argument : 1;
+
+                    // Need to reach at least both levels
+                    minLevel = Math.Max(minLevel, Math.Max(firstEvolutionLevel, secondEvolutionLevel));
+                    return minLevel;
+                }
+            }
         }
+
+        return minLevel;
+    }
+
+    private static void ProcessEvolutionLine(Dictionary<string, List<EncounterInfo>> encounterData, GameStrings gameStrings,
+        PersonalTable9SV pt, StreamWriter errorLogger, ushort species, byte form, string locationName, int locationId,
+        int baseLevel, int maxLevel, string encounterType, bool isShinyLocked, bool isGift, string fixedBall, string encounterVersion,
+        SizeType9 sizeType, byte sizeValue, HashSet<(ushort Species, byte Form)> processedForms)
+    {
+        var personalInfo = pt.GetFormEntry(species, form);
+        if (personalInfo is null || !personalInfo.IsPresentInGame)
+            return;
+
+        var nextEvolutions = GetImmediateEvolutions(species, form, pt, processedForms);
+        foreach (var (evoSpecies, evoForm) in nextEvolutions)
+        {
+            // Skip if we've already processed this form
+            if (!processedForms.Add((evoSpecies, evoForm)))
+                continue;
+
+            var evoPersonalInfo = pt.GetFormEntry(evoSpecies, evoForm);
+            if (evoPersonalInfo is null || !evoPersonalInfo.IsPresentInGame)
+                continue;
+
+            // Get minimum evolution level
+            var evolutionMinLevel = GetMinEvolutionLevel(species, evoSpecies);
+            // Use the higher of the evolution requirement and base encounter level
+            var minLevel = Math.Max(baseLevel, evolutionMinLevel);
+
+            AddSingleEncounterInfo(encounterData, gameStrings, errorLogger, evoSpecies, evoForm, locationName, locationId,
+                minLevel, Math.Max(minLevel, maxLevel), $"{encounterType} (Evolved)", isShinyLocked, isGift,
+                fixedBall, encounterVersion, sizeType, sizeValue);
+
+            // Recursively process next evolutions
+            ProcessEvolutionLine(encounterData, gameStrings, pt, errorLogger, evoSpecies, evoForm, locationName, locationId,
+                minLevel, Math.Max(minLevel, maxLevel), encounterType, isShinyLocked, isGift, fixedBall, encounterVersion, sizeType, sizeValue, processedForms);
+        }
+    }
+
+    private static List<(ushort Species, byte Form)> GetImmediateEvolutions(
+        ushort species,
+        byte form,
+        PersonalTable9SV pt,
+        HashSet<(ushort Species, byte Form)> processedForms)
+    {
+        var results = new List<(ushort Species, byte Form)>();
+
+        // Get evolution data directly from the evolution tree
+        var tree = EvolutionTree.GetEvolutionTree(EntityContext.Gen9);
+        var evos = tree.Forward.GetForward(species, form);
+
+        foreach (var evo in evos.Span)
+        {
+            ushort evoSpecies = (ushort)evo.Species;
+            byte evoForm = (byte)evo.Form;
+
+            // Skip if already processed or not in the game
+            if (processedForms.Contains((evoSpecies, evoForm)))
+                continue;
+
+            var personalInfo = pt.GetFormEntry(evoSpecies, evoForm);
+            if (personalInfo is null || !personalInfo.IsPresentInGame)
+                continue;
+
+            results.Add((evoSpecies, evoForm));
+        }
+
+        return results;
+    }
+
+    private static string CombineVersions(string version1, string version2)
+    {
+        if (version1 == "Both" || version2 == "Both")
+            return "Both";
+
+        if ((version1 == "Scarlet" && version2 == "Violet") ||
+            (version1 == "Violet" && version2 == "Scarlet"))
+        {
+            return "Both";
+        }
+
+        return version1; // Return first version if they're the same
+    }
+
+    private static void AddSingleEncounterInfo(Dictionary<string, List<EncounterInfo>> encounterData, GameStrings gameStrings,
+        StreamWriter errorLogger, ushort speciesIndex, byte form, string locationName, int locationId, int minLevel, int maxLevel,
+        string encounterType, bool isShinyLocked, bool isGift, string fixedBall, string encounterVersion,
+        SizeType9 sizeType, byte sizeValue)
+    {
+        string dexNumber = form > 0 ? $"{speciesIndex}-{form}" : speciesIndex.ToString();
+
+        var speciesName = gameStrings.specieslist[speciesIndex];
+        if (string.IsNullOrEmpty(speciesName))
+        {
+            errorLogger.WriteLine($"[{DateTime.Now}] Empty species name for index {speciesIndex}. Skipping.");
+            return;
+        }
+
+        var personalInfo = PersonalTable.SV.GetFormEntry(speciesIndex, form);
+        if (personalInfo is null)
+        {
+            errorLogger.WriteLine($"[{DateTime.Now}] Personal info not found for species {speciesIndex} form {form}. Skipping.");
+            return;
+        }
+
+        string genderRatio = DetermineGenderRatio(personalInfo);
+
+        // Initialize the list if it doesn't exist
+        if (!encounterData.TryGetValue(dexNumber, out var encounterList))
+        {
+            encounterList = [];
+            encounterData[dexNumber] = encounterList;
+        }
+
+        // Check for existing similar encounter
+        var existingEncounter = encounterList.FirstOrDefault(e =>
+            e.LocationId == locationId &&
+            e.SpeciesIndex == speciesIndex &&
+            e.Form == form &&
+            e.EncounterType == encounterType &&
+            e.Gender == genderRatio);
+
+        if (existingEncounter is not null)
+        {
+            // Update existing encounter data
+            existingEncounter.MinLevel = Math.Min(existingEncounter.MinLevel, minLevel);
+            existingEncounter.MaxLevel = Math.Max(existingEncounter.MaxLevel, maxLevel);
+
+            // Combine version availability
+            string existingVersion = existingEncounter.EncounterVersion ?? string.Empty;
+            string newEncounterVersion = encounterVersion ?? string.Empty;
+            existingEncounter.EncounterVersion = CombineVersions(existingVersion, newEncounterVersion);
+
+            errorLogger.WriteLine($"[{DateTime.Now}] Updated existing encounter: {speciesName} " +
+                $"(Dex: {dexNumber}) at {locationName} (ID: {locationId}), Levels {existingEncounter.MinLevel}-{existingEncounter.MaxLevel}, " +
+                $"Type: {encounterType}, Version: {existingEncounter.EncounterVersion}, Gender: {genderRatio}");
+        }
+        else
+        {
+            // Add new encounter
+            encounterList.Add(new EncounterInfo
+            {
+                SpeciesName = speciesName,
+                SpeciesIndex = speciesIndex,
+                Form = form,
+                LocationName = locationName,
+                LocationId = locationId,
+                MinLevel = minLevel,
+                MaxLevel = maxLevel,
+                EncounterType = encounterType,
+                IsShinyLocked = isShinyLocked,
+                IsGift = isGift,
+                FixedBall = fixedBall,
+                EncounterVersion = encounterVersion,
+                SizeType = sizeType,
+                SizeValue = sizeValue,
+                Gender = genderRatio
+            });
+
+            errorLogger.WriteLine($"[{DateTime.Now}] Processed new encounter: {speciesName} " +
+                $"(Dex: {dexNumber}) at {locationName} (ID: {locationId}), Levels {minLevel}-{maxLevel}, " +
+                $"Type: {encounterType}, Version: {encounterVersion}, Gender: {genderRatio}");
+        }
+    }
+
+    private static string DetermineGenderRatio(IPersonalInfo personalInfo) => personalInfo switch
+    {
+        { Genderless: true } => "Genderless",
+        { OnlyFemale: true } => "Female",
+        { OnlyMale: true } => "Male",
+        { Gender: 0 } => "Male",        // 100% Male
+        { Gender: 254 } => "Female",    // 100% Female
+        { Gender: 255 } => "Genderless",// Genderless
+        _ => "Male, Female"             // Mixed gender ratio
+    };
+
+    private sealed class EncounterInfo
+    {
+        public required string SpeciesName { get; set; }
+        public required int SpeciesIndex { get; set; }
+        public required int Form { get; set; }
+        public required string LocationName { get; set; }
+        public required int LocationId { get; set; }
+        public required int MinLevel { get; set; }
+        public required int MaxLevel { get; set; }
+        public required string EncounterType { get; set; }
+        public required bool IsShinyLocked { get; set; }
+        public required bool IsGift { get; set; }
+        public required string FixedBall { get; set; }
+        public required string EncounterVersion { get; set; }
+        public required SizeType9 SizeType { get; set; }
+        public required byte SizeValue { get; set; }
+        public required string Gender { get; set; }
     }
 }

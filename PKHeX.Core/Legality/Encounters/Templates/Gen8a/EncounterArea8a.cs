@@ -20,7 +20,7 @@ public sealed record EncounterArea8a : IEncounterArea<EncounterSlot8a>, IAreaLoc
     public EncounterSlot8a[] Slots { get; }
     public GameVersion Version => GameVersion.PLA;
 
-    private readonly byte[] Locations;
+    public readonly byte[] Locations;
     public readonly SlotType8a Type;
 
     public ushort Location => Locations[0];
@@ -35,7 +35,7 @@ public sealed record EncounterArea8a : IEncounterArea<EncounterSlot8a>, IAreaLoc
         return result;
     }
 
-    private EncounterArea8a(ReadOnlySpan<byte> areaData)
+    public EncounterArea8a(ReadOnlySpan<byte> areaData)
     {
         // Area Metadata
         var locationCount = areaData[0];
