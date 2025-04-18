@@ -108,18 +108,24 @@ namespace PKHeX.Core.MetLocationGenerator
             StreamWriter errorLogger, int speciesIndex, int form, string locationName, int locationId,
             int minLevel, int maxLevel, string encounterType, bool isShinyLocked, string fixedBall, string encounterVersion)
         {
+            // Add the base species encounter
             AddSingleEncounterInfo(encounterData, gameStrings, errorLogger, speciesIndex, form, locationName, locationId,
                 minLevel, maxLevel, encounterType, isShinyLocked, fixedBall, encounterVersion);
 
             var processedForms = new HashSet<(int Species, int Form)> { ((int)speciesIndex, form) };
+
+            // Process all possible evolutions
             ProcessEvolutions(speciesIndex, form, minLevel, locationId, locationName, isShinyLocked,
                 fixedBall, encounterVersion, encounterType, encounterData, gameStrings, errorLogger, processedForms);
         }
 
         private static void AddSingleEncounterInfo(Dictionary<string, List<EncounterInfo>> encounterData, GameStrings gameStrings,
             StreamWriter errorLogger, int speciesIndex, int form, string locationName, int locationId,
-            int minLevel, int maxLevel, string encounterType, bool isShinyLocked, string fixedBall, string encounterVersion)
+            int minLevel, int maxLevel, string encounterType, bool isShinyLocked, string fixedBall, string encounterVersion, int? metLevel = null)
         {
+            // Normalize form value - use 0 for default form (255 is sometimes used as a placeholder)
+            form = form == 255 ? 0 : form;
+
             string dexNumber = speciesIndex.ToString();
             if (form > 0)
                 dexNumber += $"-{form}";
@@ -134,7 +140,8 @@ namespace PKHeX.Core.MetLocationGenerator
                 return;
             }
 
-            encounterData[dexNumber].Add(new EncounterInfo
+            // Create a new encounter info entry with all details
+            var encounterInfo = new EncounterInfo
             {
                 SpeciesName = speciesName,
                 SpeciesIndex = speciesIndex,
@@ -143,13 +150,26 @@ namespace PKHeX.Core.MetLocationGenerator
                 LocationId = locationId,
                 MinLevel = minLevel,
                 MaxLevel = maxLevel,
+                MetLevel = metLevel ?? minLevel, // Use provided metLevel for evolved forms, otherwise use minLevel
                 EncounterType = encounterType,
                 IsShinyLocked = isShinyLocked,
                 FixedBall = fixedBall,
                 EncounterVersion = encounterVersion
-            });
+            };
 
-            errorLogger.WriteLine($"[{DateTime.Now}] Processed encounter: {speciesName} (Dex: {dexNumber}) at {locationName} (ID: {locationId}), Levels {minLevel}-{maxLevel}, Type: {encounterType}");
+            // Add to the dictionary, ensuring no duplicates
+            bool isDuplicate = encounterData[dexNumber].Exists(e =>
+                e.LocationId == locationId &&
+                e.EncounterType == encounterType &&
+                e.EncounterVersion == encounterVersion &&
+                e.MinLevel == minLevel &&
+                e.MaxLevel == maxLevel);
+
+            if (!isDuplicate)
+            {
+                encounterData[dexNumber].Add(encounterInfo);
+                errorLogger.WriteLine($"[{DateTime.Now}] Processed encounter: {speciesName} (Dex: {dexNumber}) at {locationName} (ID: {locationId}), Levels {minLevel}-{maxLevel}, Type: {encounterType}");
+            }
         }
 
         private static void ProcessEvolutions(int speciesIndex, int form, int baseLevel, int locationId, string locationName,
@@ -163,8 +183,10 @@ namespace PKHeX.Core.MetLocationGenerator
             foreach (var evo in evos.Span)
             {
                 int evolvedSpecies = evo.Species;
-                int evolvedForm = evo.Form;
+                // Normalize form value - use 0 for default form (255 is often used as a placeholder)
+                int evolvedForm = evo.Form == 255 ? 0 : evo.Form;
 
+                // Avoid processing the same species+form combination multiple times
                 if (!processedForms.Add((evolvedSpecies, evolvedForm)))
                     continue;
 
@@ -175,6 +197,27 @@ namespace PKHeX.Core.MetLocationGenerator
                     continue;
                 }
 
+                // Get evolution level directly from the evolution method data
+                int evolutionLevel = baseLevel;
+
+                if (evo.Level > 0)
+                {
+                    // Evolution requires a specific level (like Level 16 for Charmeleon)
+                    evolutionLevel = Math.Max(evolutionLevel, evo.Level);
+                }
+
+                if (evo.LevelUp > 0)
+                {
+                    // Evolution requires gaining levels relative to current level
+                    evolutionLevel = Math.Max(evolutionLevel, baseLevel + evo.LevelUp);
+                }
+
+                // Final minimum level is the evolution requirement or the original level, whichever is higher
+                int minLevel = Math.Max(baseLevel, evolutionLevel);
+
+                // Normalize evolved form for consistent key generation
+                evolvedForm = evolvedForm == 255 ? 0 : evolvedForm;
+
                 string evolvedDexNumber = evolvedSpecies.ToString();
                 if (evolvedForm > 0)
                     evolvedDexNumber += $"-{evolvedForm}";
@@ -182,28 +225,13 @@ namespace PKHeX.Core.MetLocationGenerator
                 if (!encounterData.ContainsKey(evolvedDexNumber))
                     encounterData[evolvedDexNumber] = new List<EncounterInfo>();
 
-                int minEvoLevel = evo.LevelUp > 0 ? evo.LevelUp : (evo.Method == EvolutionType.LevelUp ? evo.Argument : 1);
-                int minLevel = Math.Max(baseLevel, minEvoLevel);
-
+                // Ensure we preserve the original location
                 string evolvedEncounterType = $"{encounterType} (Evolved)";
 
-                encounterData[evolvedDexNumber].Add(new EncounterInfo
-                {
-                    SpeciesName = evolvedSpeciesName,
-                    SpeciesIndex = evolvedSpecies,
-                    Form = evolvedForm,
-                    LocationName = locationName,
-                    LocationId = locationId,
-                    MinLevel = minLevel,
-                    MaxLevel = 100,
-                    EncounterType = evolvedEncounterType,
-                    IsShinyLocked = isShinyLocked,
-                    FixedBall = fixedBall,
-                    EncounterVersion = versionName
-                });
+                AddSingleEncounterInfo(encounterData, gameStrings, errorLogger, evolvedSpecies, evolvedForm, locationName, locationId,
+                    minLevel, 100, evolvedEncounterType, isShinyLocked, fixedBall, versionName, baseLevel);
 
-                errorLogger.WriteLine($"[{DateTime.Now}] Processed evolved encounter: {evolvedSpeciesName} (Dex: {evolvedDexNumber}) at {locationName} (ID: {locationId}), Min Level {minLevel}, Type: {evolvedEncounterType}");
-
+                // Recursively process further evolutions, ensuring the location data is preserved
                 ProcessEvolutions(evolvedSpecies, evolvedForm, minLevel, locationId, locationName,
                     isShinyLocked, fixedBall, versionName, encounterType, encounterData, gameStrings, errorLogger, processedForms);
             }
@@ -218,6 +246,7 @@ namespace PKHeX.Core.MetLocationGenerator
             public int LocationId { get; set; }
             public int MinLevel { get; set; }
             public int MaxLevel { get; set; }
+            public int MetLevel { get; set; }
             public string? EncounterType { get; set; }
             public bool IsShinyLocked { get; set; }
             public string? FixedBall { get; set; }

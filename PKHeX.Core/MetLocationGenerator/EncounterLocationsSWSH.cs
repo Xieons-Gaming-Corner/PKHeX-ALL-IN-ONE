@@ -21,7 +21,6 @@ public static class EncounterLocationsSWSH
             var gameStrings = GameInfo.GetStrings("en");
             var encounterData = new Dictionary<string, List<EncounterInfo>>();
 
-            // Process all encounter types
             ProcessEncounterSlots(Encounters8.SlotsSW_Symbol, encounterData, gameStrings, errorLogger, "Sword Symbol");
             ProcessEncounterSlots(Encounters8.SlotsSW_Hidden, encounterData, gameStrings, errorLogger, "Sword Hidden");
             ProcessEncounterSlots(Encounters8.SlotsSH_Symbol, encounterData, gameStrings, errorLogger, "Shield Symbol");
@@ -86,11 +85,9 @@ public static class EncounterLocationsSWSH
             if (personalInfo is null || !personalInfo.IsPresentInGame)
                 continue;
 
-            // Skip species that can't breed (Undiscovered egg group)
             if (personalInfo.EggGroup1 == 15 || personalInfo.EggGroup2 == 15)
                 continue;
 
-            // For each valid form
             byte formCount = personalInfo.FormCount;
             for (byte form = 0; form < formCount; form++)
             {
@@ -98,13 +95,11 @@ public static class EncounterLocationsSWSH
                 if (formInfo is null || !formInfo.IsPresentInGame)
                     continue;
 
-                // Skip forms that can't breed
                 if (formInfo.EggGroup1 == 15 || formInfo.EggGroup2 == 15)
                     continue;
 
                 bool canGigantamax = Gigantamax.CanToggle(species, form);
 
-                // Eggs hatch at level 1
                 AddSingleEncounterInfo(
                     encounterData,
                     gameStrings,
@@ -113,13 +108,14 @@ public static class EncounterLocationsSWSH
                     form,
                     locationName,
                     eggMetLocationId,
-                    1, // Min level
-                    1, // Max level
-                    "Egg", // Encounter type
-                    false, // Eggs are never shiny locked
-                    true, // Eggs are considered "gift" Pokémon
-                    string.Empty, // No fixed ball for eggs
-                    "Both", // Available in both versions
+                    1,
+                    1,
+                    1,
+                    "Egg",
+                    false,
+                    true,
+                    string.Empty,
+                    "Both",
                     canGigantamax
                 );
             }
@@ -147,13 +143,12 @@ public static class EncounterLocationsSWSH
     private static void ProcessDenEncounters(Dictionary<string, List<EncounterInfo>> encounterData,
         GameStrings gameStrings, StreamWriter errorLogger)
     {
-        const int denLocationId = Encounters8Nest.SharedNest; // 162 (Pokemon Den)
+        const int denLocationId = Encounters8Nest.SharedNest;
         var locationName = gameStrings.GetLocationName(false, (ushort)denLocationId, 8, 8, GameVersion.SWSH)
             ?? $"Unknown Location {denLocationId}";
 
         errorLogger.WriteLine($"[{DateTime.Now}] Processing Pokémon Den encounters with location ID: {denLocationId} ({locationName})");
 
-        // Process all den encounters with a consistent "Max Raid" encounter type
         ProcessNestEncounters(Encounters8Nest.Nest_SW, "Sword", encounterData, gameStrings, errorLogger, denLocationId, locationName);
         ProcessNestEncounters(Encounters8Nest.Nest_SH, "Shield", encounterData, gameStrings, errorLogger, denLocationId, locationName);
         ProcessDistributionEncounters(Encounters8Nest.Dist_SW, "Sword", encounterData, gameStrings, errorLogger, denLocationId, locationName);
@@ -169,7 +164,6 @@ public static class EncounterLocationsSWSH
         {
             bool canGigantamax = Gigantamax.CanToggle(encounter.Species, encounter.Form) || encounter.CanGigantamax;
 
-            // For raid encounters, add with evolutions to ensure evolved forms are included
             AddEncounterInfoWithEvolutions(
                 encounterData,
                 gameStrings,
@@ -180,7 +174,7 @@ public static class EncounterLocationsSWSH
                 locationId,
                 encounter.Level,
                 encounter.Level,
-                "Max Raid", // Consistent type
+                "Max Raid",
                 encounter.Shiny == Shiny.Never,
                 false,
                 string.Empty,
@@ -198,7 +192,6 @@ public static class EncounterLocationsSWSH
         {
             bool canGigantamax = Gigantamax.CanToggle(encounter.Species, encounter.Form) || encounter.CanGigantamax;
 
-            // For distribution encounters, add with evolutions
             AddEncounterInfoWithEvolutions(
                 encounterData,
                 gameStrings,
@@ -209,7 +202,7 @@ public static class EncounterLocationsSWSH
                 locationId,
                 encounter.Level,
                 encounter.Level,
-                "Max Raid", // Consistent type
+                "Max Raid",
                 encounter.Shiny == Shiny.Never,
                 false,
                 string.Empty,
@@ -234,7 +227,6 @@ public static class EncounterLocationsSWSH
 
             bool canGigantamax = Gigantamax.CanToggle(encounter.Species, encounter.Form) || encounter.CanGigantamax;
 
-            // For crystal encounters, add with evolutions
             AddEncounterInfoWithEvolutions(
                 encounterData,
                 gameStrings,
@@ -245,7 +237,7 @@ public static class EncounterLocationsSWSH
                 locationId,
                 encounter.Level,
                 encounter.Level,
-                "Max Raid", // Consistent type
+                "Max Raid",
                 encounter.Shiny == Shiny.Never,
                 false,
                 string.Empty,
@@ -297,16 +289,13 @@ public static class EncounterLocationsSWSH
             return;
         }
 
-        // Process base species
         AddSingleEncounterInfo(encounterData, gameStrings, errorLogger, speciesIndex, form, locationName, locationId,
-            minLevel, maxLevel, encounterType, isShinyLocked, isGift, fixedBall, encounterVersion, canGigantamax);
+            minLevel, maxLevel, minLevel, encounterType, isShinyLocked, isGift, fixedBall, encounterVersion, canGigantamax);
 
-        // Track processed species/forms to avoid duplicates
         var processedForms = new HashSet<(ushort Species, byte Form)> { (speciesIndex, form) };
 
-        // Process all evolutions recursively
         ProcessEvolutionLine(encounterData, gameStrings, pt, errorLogger, speciesIndex, form, locationName, locationId,
-            minLevel, encounterType, isShinyLocked, isGift, fixedBall, encounterVersion, canGigantamax, processedForms);
+            minLevel, maxLevel, minLevel, encounterType, isShinyLocked, isGift, fixedBall, encounterVersion, canGigantamax, processedForms);
     }
 
     private static void ProcessEvolutionLine(
@@ -319,6 +308,8 @@ public static class EncounterLocationsSWSH
         string locationName,
         int locationId,
         int baseLevel,
+        int maxLevel,
+        int metLevel,
         string encounterType,
         bool isShinyLocked,
         bool isGift,
@@ -327,12 +318,10 @@ public static class EncounterLocationsSWSH
         bool baseCanGigantamax,
         HashSet<(ushort Species, byte Form)> processedForms)
     {
-        // Get all immediate evolutions
         var nextEvolutions = GetImmediateEvolutions(species, form, pt, processedForms);
 
         foreach (var (evoSpecies, evoForm) in nextEvolutions)
         {
-            // Skip if already processed
             if (!processedForms.Add((evoSpecies, evoForm)))
                 continue;
 
@@ -340,25 +329,19 @@ public static class EncounterLocationsSWSH
             if (evoPersonalInfo is null || !evoPersonalInfo.IsPresentInGame)
                 continue;
 
-            // Get minimum evolution level
             var evolutionMinLevel = GetMinEvolutionLevel(species, evoSpecies);
-            // Use the higher of the evolution requirement and base encounter level
             var minLevel = Math.Max(baseLevel, evolutionMinLevel);
 
-            // Evolution can gigantamax if either the base form could or the evolved form naturally can
             bool evoCanGigantamax = baseCanGigantamax || Gigantamax.CanToggle(evoSpecies, evoForm);
 
-            // Create evolved form entry
             AddSingleEncounterInfo(
                 encounterData, gameStrings, errorLogger, evoSpecies, evoForm, locationName, locationId,
-                minLevel, 100, // Evolved forms can be leveled up to max
-                $"{encounterType} (Evolved)", // Mark as an evolved form
+                minLevel, 100, metLevel, $"{encounterType} (Evolved)",
                 isShinyLocked, isGift, fixedBall, encounterVersion, evoCanGigantamax);
 
-            // Recursively process next evolutions
             ProcessEvolutionLine(
                 encounterData, gameStrings, pt, errorLogger, evoSpecies, evoForm, locationName, locationId,
-                minLevel, encounterType, isShinyLocked, isGift, fixedBall, encounterVersion,
+                minLevel, 100, metLevel, encounterType, isShinyLocked, isGift, fixedBall, encounterVersion,
                 evoCanGigantamax, processedForms);
         }
     }
@@ -371,7 +354,6 @@ public static class EncounterLocationsSWSH
     {
         var results = new List<(ushort Species, byte Form)>();
 
-        // Get evolution data directly from the evolution tree
         var tree = EvolutionTree.GetEvolutionTree(EntityContext.Gen8);
         var evos = tree.Forward.GetForward(species, form);
 
@@ -380,7 +362,6 @@ public static class EncounterLocationsSWSH
             ushort evoSpecies = (ushort)evo.Species;
             byte evoForm = (byte)evo.Form;
 
-            // Skip if already processed or not in the game
             if (processedForms.Contains((evoSpecies, evoForm)))
                 continue;
 
@@ -399,32 +380,27 @@ public static class EncounterLocationsSWSH
         var tree = EvolutionTree.GetEvolutionTree(EntityContext.Gen8);
         int minLevel = 1;
 
-        // Get direct evolutions
         var evos = tree.Forward.GetForward(baseSpecies, 0);
         foreach (var evo in evos.Span)
         {
             if (evo.Species == evolvedSpecies)
             {
-                // Direct evolution - use level requirement
                 int levelRequirement = evo.LevelUp > 0 ? evo.LevelUp :
                                        evo.Method == EvolutionType.LevelUp ? evo.Argument : 1;
                 minLevel = Math.Max(minLevel, levelRequirement);
                 return minLevel;
             }
 
-            // Check for indirect evolution (evolution chain)
             var secondaryEvos = tree.Forward.GetForward((ushort)evo.Species, 0);
             foreach (var secondEvo in secondaryEvos.Span)
             {
                 if (secondEvo.Species == evolvedSpecies)
                 {
-                    // Found a two-step evolution chain
                     int firstEvolutionLevel = evo.LevelUp > 0 ? evo.LevelUp :
                                               evo.Method == EvolutionType.LevelUp ? evo.Argument : 1;
                     int secondEvolutionLevel = secondEvo.LevelUp > 0 ? secondEvo.LevelUp :
                                                secondEvo.Method == EvolutionType.LevelUp ? secondEvo.Argument : 1;
 
-                    // Need to reach at least both levels
                     minLevel = Math.Max(minLevel, Math.Max(firstEvolutionLevel, secondEvolutionLevel));
                     return minLevel;
                 }
@@ -444,6 +420,7 @@ public static class EncounterLocationsSWSH
         int locationId,
         int minLevel,
         int maxLevel,
+        int metLevel,
         string encounterType,
         bool isShinyLocked,
         bool isGift,
@@ -469,14 +446,12 @@ public static class EncounterLocationsSWSH
 
         string genderRatio = DetermineGenderRatio(personalInfo);
 
-        // Initialize the list if it doesn't exist
         if (!encounterData.TryGetValue(dexNumber, out var encounterList))
         {
             encounterList = [];
             encounterData[dexNumber] = encounterList;
         }
 
-        // Check for existing similar encounter
         var existingEncounter = encounterList.FirstOrDefault(e =>
             e.LocationId == locationId &&
             e.SpeciesIndex == speciesIndex &&
@@ -487,22 +462,21 @@ public static class EncounterLocationsSWSH
 
         if (existingEncounter is not null)
         {
-            // Update existing encounter
             existingEncounter.MinLevel = Math.Min(existingEncounter.MinLevel, minLevel);
             existingEncounter.MaxLevel = Math.Max(existingEncounter.MaxLevel, maxLevel);
+            existingEncounter.MetLevel = Math.Min(existingEncounter.MetLevel, metLevel);
 
-            // Combine version availability
             string existingVersion = existingEncounter.EncounterVersion ?? string.Empty;
             string newVersion = encounterVersion ?? string.Empty;
             existingEncounter.EncounterVersion = CombineVersions(existingVersion, newVersion);
 
             errorLogger.WriteLine($"[{DateTime.Now}] Updated existing encounter: {speciesName} " +
                 $"(Dex: {dexNumber}) at {locationName} (ID: {locationId}), Levels {existingEncounter.MinLevel}-{existingEncounter.MaxLevel}, " +
-                $"Type: {encounterType}, Version: {existingEncounter.EncounterVersion}, Can Gigantamax: {canGigantamax}, Gender: {genderRatio}");
+                $"Met Level: {existingEncounter.MetLevel}, Type: {encounterType}, Version: {existingEncounter.EncounterVersion}, " +
+                $"Can Gigantamax: {canGigantamax}, Gender: {genderRatio}");
         }
         else
         {
-            // Add new encounter
             encounterList.Add(new EncounterInfo
             {
                 SpeciesName = speciesName,
@@ -512,6 +486,7 @@ public static class EncounterLocationsSWSH
                 LocationId = locationId,
                 MinLevel = minLevel,
                 MaxLevel = maxLevel,
+                MetLevel = metLevel,
                 EncounterType = encounterType,
                 IsShinyLocked = isShinyLocked,
                 IsGift = isGift,
@@ -523,7 +498,8 @@ public static class EncounterLocationsSWSH
 
             errorLogger.WriteLine($"[{DateTime.Now}] Processed new encounter: {speciesName} " +
                 $"(Dex: {dexNumber}) at {locationName} (ID: {locationId}), Levels {minLevel}-{maxLevel}, " +
-                $"Type: {encounterType}, Version: {encounterVersion}, Can Gigantamax: {canGigantamax}, Gender: {genderRatio}");
+                $"Met Level: {metLevel}, Type: {encounterType}, Version: {encounterVersion}, " +
+                $"Can Gigantamax: {canGigantamax}, Gender: {genderRatio}");
         }
     }
 
@@ -538,7 +514,7 @@ public static class EncounterLocationsSWSH
             return "Both";
         }
 
-        return version1; // Return first version if they're the same
+        return version1;
     }
 
     private static string DetermineGenderRatio(IPersonalInfo personalInfo) => personalInfo switch
@@ -546,10 +522,10 @@ public static class EncounterLocationsSWSH
         { Genderless: true } => "Genderless",
         { OnlyFemale: true } => "Female",
         { OnlyMale: true } => "Male",
-        { Gender: 0 } => "Male",        // 100% Male
-        { Gender: 254 } => "Female",    // 100% Female
-        { Gender: 255 } => "Genderless",// Genderless
-        _ => "Male, Female"             // Mixed gender ratio
+        { Gender: 0 } => "Male",
+        { Gender: 254 } => "Female",
+        { Gender: 255 } => "Genderless",
+        _ => "Male, Female"
     };
 
     private sealed class EncounterInfo
@@ -561,6 +537,7 @@ public static class EncounterLocationsSWSH
         public required int LocationId { get; set; }
         public required int MinLevel { get; set; }
         public required int MaxLevel { get; set; }
+        public required int MetLevel { get; set; }
         public required string EncounterType { get; set; }
         public required bool IsShinyLocked { get; set; }
         public required bool IsGift { get; set; }

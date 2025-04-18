@@ -113,10 +113,17 @@ public static class EncounterLocationsLA
             var formVariantEncounter = CreateFormVariantEncounter(baseEncounter, form);
             errorLogger.WriteLine($"[{DateTime.Now}] Adding alternate form: Species {species}-{form} based on original form {originalForm}");
 
+            int metLevel = formVariantEncounter switch
+            {
+                EncounterSlot8a slot => slot.LevelMin,
+                EncounterStatic8a static8a => static8a.LevelMin,
+                _ => 1
+            };
+
             string formVariantType = $"{encounterType} (Form Variant)";
             AddSingleEncounterInfo(formVariantEncounter, locationId,
                 gameStrings.GetLocationName(false, (byte)(locationId & 0xFF), 8, 8, GameVersion.PLA),
-                formVariantType, encounterData, gameStrings, errorLogger);
+                formVariantType, encounterData, gameStrings, errorLogger, metLevel);
 
             var personalInfo = pt.GetFormEntry(species, form);
             if (personalInfo is null || !personalInfo.IsPresentInGame)
@@ -127,7 +134,7 @@ public static class EncounterLocationsLA
             ProcessEvolutionLine(formVariantEncounter, locationId,
                 gameStrings.GetLocationName(false, (byte)(locationId & 0xFF), 8, 8, GameVersion.PLA),
                 formVariantType, encounterData, gameStrings, errorLogger,
-                species, form, pt, processedForms);
+                species, form, pt, processedForms, metLevel);
         }
     }
 
@@ -198,17 +205,24 @@ public static class EncounterLocationsLA
             return;
         }
 
-        AddSingleEncounterInfo(encounter, locationId, locationName, encounterType, encounterData, gameStrings, errorLogger);
+        int metLevel = encounter switch
+        {
+            EncounterSlot8a slot => slot.LevelMin,
+            EncounterStatic8a static8a => static8a.LevelMin,
+            _ => 1
+        };
+
+        AddSingleEncounterInfo(encounter, locationId, locationName, encounterType, encounterData, gameStrings, errorLogger, metLevel);
 
         var processedForms = new HashSet<(ushort Species, byte Form)> { (speciesIndex, form) };
 
         ProcessEvolutionLine(encounter, locationId, locationName, encounterType, encounterData, gameStrings, errorLogger,
-            speciesIndex, form, pt, processedForms);
+            speciesIndex, form, pt, processedForms, metLevel);
     }
 
     private static void ProcessEvolutionLine(ISpeciesForm baseEncounter, ushort locationId, string locationName, string encounterType,
         Dictionary<string, List<EncounterInfo>> encounterData, GameStrings gameStrings, StreamWriter errorLogger,
-        ushort species, byte form, PersonalTable8LA pt, HashSet<(ushort Species, byte Form)> processedForms)
+        ushort species, byte form, PersonalTable8LA pt, HashSet<(ushort Species, byte Form)> processedForms, int metLevel)
     {
         ArgumentNullException.ThrowIfNull(baseEncounter);
         ArgumentNullException.ThrowIfNull(locationName);
@@ -246,10 +260,10 @@ public static class EncounterLocationsLA
             var evoEncounter = CreateEvolvedEncounter(baseEncounter, evoSpecies, evoForm, minLevel);
 
             string evolvedEncounterType = $"{encounterType} (Evolved)";
-            AddSingleEncounterInfo(evoEncounter, locationId, locationName, evolvedEncounterType, encounterData, gameStrings, errorLogger);
+            AddSingleEncounterInfo(evoEncounter, locationId, locationName, evolvedEncounterType, encounterData, gameStrings, errorLogger, metLevel);
 
             ProcessEvolutionLine(evoEncounter, locationId, locationName, encounterType, encounterData, gameStrings, errorLogger,
-                evoSpecies, evoForm, pt, processedForms);
+                evoSpecies, evoForm, pt, processedForms, metLevel);
         }
     }
 
@@ -360,7 +374,7 @@ public static class EncounterLocationsLA
     }
 
     private static void AddSingleEncounterInfo(ISpeciesForm encounter, ushort locationId, string locationName, string encounterType,
-        Dictionary<string, List<EncounterInfo>> encounterData, GameStrings gameStrings, StreamWriter errorLogger)
+        Dictionary<string, List<EncounterInfo>> encounterData, GameStrings gameStrings, StreamWriter errorLogger, int metLevel)
     {
         ArgumentNullException.ThrowIfNull(encounter);
         ArgumentNullException.ThrowIfNull(locationName);
@@ -410,16 +424,19 @@ public static class EncounterLocationsLA
                 case EncounterSlot8a slotUpdate:
                     existingEncounter.MinLevel = Math.Min(existingEncounter.MinLevel, slotUpdate.LevelMin);
                     existingEncounter.MaxLevel = Math.Max(existingEncounter.MaxLevel, slotUpdate.LevelMax);
+                    existingEncounter.MetLevel = Math.Min(existingEncounter.MetLevel, metLevel);
                     break;
 
                 case EncounterStatic8a staticUpdate:
                     existingEncounter.MinLevel = Math.Min(existingEncounter.MinLevel, staticUpdate.LevelMin);
                     existingEncounter.MaxLevel = Math.Max(existingEncounter.MaxLevel, staticUpdate.LevelMax);
+                    existingEncounter.MetLevel = Math.Min(existingEncounter.MetLevel, metLevel);
                     break;
             }
 
             errorLogger.WriteLine($"[{DateTime.Now}] Updated existing encounter: {existingEncounter.SpeciesName} " +
-                $"(Dex: {dexNumber}) at {locationName} (ID: {locationId}), Levels {existingEncounter.MinLevel}-{existingEncounter.MaxLevel}");
+                $"(Dex: {dexNumber}) at {locationName} (ID: {locationId}), Levels {existingEncounter.MinLevel}-{existingEncounter.MaxLevel}, " +
+                $"Met Level: {existingEncounter.MetLevel}");
         }
         else
         {
@@ -435,6 +452,7 @@ public static class EncounterLocationsLA
                 IsAlpha = isAlpha,
                 MinLevel = 0,
                 MaxLevel = 0,
+                MetLevel = metLevel,
                 FlawlessIVCount = 0,
                 IsShinyLocked = false,
                 FixedBall = string.Empty,
@@ -463,7 +481,7 @@ public static class EncounterLocationsLA
             encounterList.Add(info);
             errorLogger.WriteLine($"[{DateTime.Now}] Processed new encounter: {info.SpeciesName} " +
                 $"(Dex: {dexNumber}) at {locationName} (ID: {locationId}), Levels {info.MinLevel}-{info.MaxLevel}, " +
-                $"Type: {encounterType}, Gender: {info.Gender}, IsShinyLocked: {info.IsShinyLocked}, Form: {info.Form}");
+                $"Met Level: {info.MetLevel}, Type: {encounterType}, Gender: {info.Gender}, IsShinyLocked: {info.IsShinyLocked}, Form: {info.Form}");
         }
     }
 
@@ -492,6 +510,7 @@ public static class EncounterLocationsLA
         public required int LocationId { get; set; }
         public required int MinLevel { get; set; }
         public required int MaxLevel { get; set; }
+        public required int MetLevel { get; set; }
         public required string EncounterType { get; set; }
         public required bool IsAlpha { get; set; }
         public required string Gender { get; set; }

@@ -24,7 +24,6 @@ public static class EncounterLocationsBDSP
 
             var encounterData = new Dictionary<string, List<EncounterInfo>>();
 
-            // Process all encounter types
             ProcessWildEncounters(encounterData, gameStrings, errorLogger);
             ProcessEggMetLocations(encounterData, gameStrings, errorLogger);
             ProcessStaticEncounters(encounterData, gameStrings, errorLogger);
@@ -85,7 +84,6 @@ public static class EncounterLocationsBDSP
     private static void ProcessEggMetLocations(Dictionary<string, List<EncounterInfo>> encounterData, GameStrings gameStrings,
         StreamWriter errorLogger)
     {
-        // Process both nursery couple locations in BDSP
         ProcessEggLocationForNursery(60006, "a Nursery Couple", encounterData, gameStrings, errorLogger);
         ProcessEggLocationForNursery(60010, "a Nursery Couple (2)", encounterData, gameStrings, errorLogger);
     }
@@ -105,13 +103,11 @@ public static class EncounterLocationsBDSP
                 continue;
             }
 
-            // Skip species that can't breed (Undiscovered egg group)
             if (personalInfo.EggGroup1 == 15 || personalInfo.EggGroup2 == 15)
             {
                 continue;
             }
 
-            // For each valid form
             byte formCount = personalInfo.FormCount;
             for (byte form = 0; form < formCount; form++)
             {
@@ -121,13 +117,11 @@ public static class EncounterLocationsBDSP
                     continue;
                 }
 
-                // Skip forms that can't breed
                 if (formInfo.EggGroup1 == 15 || formInfo.EggGroup2 == 15)
                 {
                     continue;
                 }
 
-                // Eggs hatch at level 1
                 AddSingleEncounterInfo(
                     encounterData,
                     gameStrings,
@@ -136,14 +130,15 @@ public static class EncounterLocationsBDSP
                     form,
                     locationName,
                     eggMetLocationId,
-                    1, // Min level
-                    1, // Max level
-                    "Egg", // Encounter type
-                    false, // Eggs are never shiny locked
-                    true, // Eggs are considered "gift" Pokémon
-                    string.Empty, // No fixed ball for eggs
-                    "Both", // Available in both versions
-                    false // Not underground
+                    1,
+                    1,
+                    1,
+                    "Egg",
+                    false,
+                    true,
+                    string.Empty,
+                    "Both",
+                    false
                 );
             }
         }
@@ -196,29 +191,26 @@ public static class EncounterLocationsBDSP
             return;
         }
 
-        // Process base species
         AddSingleEncounterInfo(
             encounterData, gameStrings, errorLogger,
             speciesIndex, form, locationName, locationId,
-            minLevel, maxLevel, encounterType,
+            minLevel, maxLevel, minLevel, encounterType,
             isShinyLocked, isGift, fixedBall,
             version, isUnderground);
 
-        // Track processed species/forms to avoid duplicates
         var processedForms = new HashSet<(ushort Species, byte Form)> { (speciesIndex, form) };
 
-        // Process all evolutions recursively
         ProcessEvolutionLine(
             encounterData, gameStrings, errorLogger,
             speciesIndex, form, locationName, locationId,
-            maxLevel, maxLevel, encounterType,
+            maxLevel, maxLevel, minLevel, encounterType,
             isShinyLocked, isGift, fixedBall,
             version, isUnderground, pt, processedForms);
     }
 
     private static void ProcessEvolutionLine(Dictionary<string, List<EncounterInfo>> encounterData, GameStrings gameStrings,
         StreamWriter errorLogger, ushort baseSpecies, byte form, string locationName, ushort locationId,
-        byte baseLevel, byte maxLevel, string encounterType, bool isShinyLocked, bool isGift, string fixedBall,
+        byte baseLevel, byte maxLevel, byte metLevel, string encounterType, bool isShinyLocked, bool isGift, string fixedBall,
         string version, bool isUnderground, PersonalTable8BDSP pt, HashSet<(ushort Species, byte Form)> processedForms)
     {
         if (pt.GetFormEntry(baseSpecies, form)?.IsPresentInGame != true)
@@ -229,7 +221,6 @@ public static class EncounterLocationsBDSP
         var nextEvolutions = GetImmediateEvolutions(baseSpecies, form, pt, processedForms);
         foreach (var (evoSpecies, evoForm) in nextEvolutions)
         {
-            // Skip if already processed or not in the game
             if (!processedForms.Add((evoSpecies, evoForm)))
             {
                 continue;
@@ -241,22 +232,20 @@ public static class EncounterLocationsBDSP
                 continue;
             }
 
-            // Get evolution level from original base species
             int evolutionMinLevel = GetMinEvolutionLevel(baseSpecies, evoSpecies);
             int minLevel = Math.Max(baseLevel, evolutionMinLevel);
 
             AddSingleEncounterInfo(
                 encounterData, gameStrings, errorLogger,
                 evoSpecies, evoForm, locationName, locationId,
-                (byte)minLevel, (byte)maxLevel, $"{encounterType} (Evolved)",
+                (byte)minLevel, (byte)maxLevel, metLevel, $"{encounterType} (Evolved)",
                 isShinyLocked, isGift, fixedBall,
                 version, isUnderground);
 
-            // Use evolved species as new base for next evolution
             ProcessEvolutionLine(
                 encounterData, gameStrings, errorLogger,
                 evoSpecies, evoForm, locationName, locationId,
-                (byte)minLevel, (byte)maxLevel, encounterType,
+                (byte)minLevel, (byte)maxLevel, metLevel, encounterType,
                 isShinyLocked, isGift, fixedBall,
                 version, isUnderground, pt, processedForms);
         }
@@ -270,7 +259,6 @@ public static class EncounterLocationsBDSP
     {
         var results = new List<(ushort Species, byte Form)>();
 
-        // Get evolution data directly from the evolution tree
         var tree = EvolutionTree.GetEvolutionTree(EntityContext.Gen8b);
         var evos = tree.Forward.GetForward(species, form);
 
@@ -279,7 +267,6 @@ public static class EncounterLocationsBDSP
             ushort evoSpecies = (ushort)evo.Species;
             byte evoForm = (byte)evo.Form;
 
-            // Skip if already processed or not in the game
             if (processedForms.Contains((evoSpecies, evoForm)))
             {
                 continue;
@@ -302,32 +289,27 @@ public static class EncounterLocationsBDSP
         var tree = EvolutionTree.GetEvolutionTree(EntityContext.Gen8b);
         int minLevel = 1;
 
-        // Check direct evolutions first
         var evos = tree.Forward.GetForward(baseSpecies, 0);
         foreach (var evo in evos.Span)
         {
             if (evo.Species == evolvedSpecies)
             {
-                // Direct evolution - use level requirement
                 int levelRequirement = evo.LevelUp > 0 ? evo.LevelUp :
                                        evo.Method == EvolutionType.LevelUp ? evo.Argument : 1;
                 minLevel = Math.Max(minLevel, levelRequirement);
                 return minLevel;
             }
 
-            // Check for indirect evolution (evolution chain)
             var secondaryEvos = tree.Forward.GetForward((ushort)evo.Species, 0);
             foreach (var secondEvo in secondaryEvos.Span)
             {
                 if (secondEvo.Species == evolvedSpecies)
                 {
-                    // Found a two-step evolution chain
                     int firstEvolutionLevel = evo.LevelUp > 0 ? evo.LevelUp :
                                               evo.Method == EvolutionType.LevelUp ? evo.Argument : 1;
                     int secondEvolutionLevel = secondEvo.LevelUp > 0 ? secondEvo.LevelUp :
                                                secondEvo.Method == EvolutionType.LevelUp ? secondEvo.Argument : 1;
 
-                    // Need to reach at least both levels
                     minLevel = Math.Max(minLevel, Math.Max(firstEvolutionLevel, secondEvolutionLevel));
                     return minLevel;
                 }
@@ -339,7 +321,7 @@ public static class EncounterLocationsBDSP
 
     private static void AddSingleEncounterInfo(Dictionary<string, List<EncounterInfo>> encounterData, GameStrings gameStrings,
         StreamWriter errorLogger, ushort speciesIndex, byte form, string locationName, ushort locationId, byte minLevel, byte maxLevel,
-        string encounterType, bool isShinyLocked, bool isGift, string fixedBall, string version, bool isUnderground)
+        byte metLevel, string encounterType, bool isShinyLocked, bool isGift, string fixedBall, string version, bool isUnderground)
     {
         string dexNumber = form > 0 ? $"{speciesIndex}-{form}" : speciesIndex.ToString();
 
@@ -359,14 +341,12 @@ public static class EncounterLocationsBDSP
 
         string genderRatio = DetermineGenderRatio(personalInfo);
 
-        // Initialize the list if it doesn't exist
         if (!encounterData.TryGetValue(dexNumber, out var encounterList))
         {
             encounterList = [];
             encounterData[dexNumber] = encounterList;
         }
 
-        // Check for existing similar encounter
         var existingEncounter = encounterList.FirstOrDefault(e =>
             e.LocationId == locationId &&
             e.SpeciesIndex == speciesIndex &&
@@ -377,22 +357,20 @@ public static class EncounterLocationsBDSP
 
         if (existingEncounter is not null)
         {
-            // Update existing encounter data
             existingEncounter.MinLevel = Math.Min(existingEncounter.MinLevel, minLevel);
             existingEncounter.MaxLevel = Math.Max(existingEncounter.MaxLevel, maxLevel);
+            existingEncounter.MetLevel = Math.Min(existingEncounter.MetLevel, metLevel);
 
-            // Combine version availability
             string existingVersion = existingEncounter.Version ?? string.Empty;
             string newVersion = version ?? string.Empty;
             existingEncounter.Version = CombineVersions(existingVersion, newVersion);
 
             errorLogger.WriteLine($"[{DateTime.Now}] Updated existing encounter: {speciesName} " +
                 $"(Dex: {dexNumber}) at {locationName} (ID: {locationId}), Levels {existingEncounter.MinLevel}-{existingEncounter.MaxLevel}, " +
-                $"Type: {encounterType}, Version: {existingEncounter.Version}, Gender: {genderRatio}");
+                $"Met Level: {existingEncounter.MetLevel}, Type: {encounterType}, Version: {existingEncounter.Version}, Gender: {genderRatio}");
         }
         else
         {
-            // Add new encounter
             encounterList.Add(new EncounterInfo
             {
                 SpeciesName = speciesName,
@@ -402,6 +380,7 @@ public static class EncounterLocationsBDSP
                 LocationId = locationId,
                 MinLevel = minLevel,
                 MaxLevel = maxLevel,
+                MetLevel = metLevel,
                 EncounterType = encounterType,
                 IsUnderground = isUnderground,
                 IsShinyLocked = isShinyLocked,
@@ -413,7 +392,7 @@ public static class EncounterLocationsBDSP
 
             errorLogger.WriteLine($"[{DateTime.Now}] Processed new encounter: {speciesName} " +
                 $"(Dex: {dexNumber}) at {locationName} (ID: {locationId}), Levels {minLevel}-{maxLevel}, " +
-                $"Type: {encounterType}, Version: {version}, Gender: {genderRatio}");
+                $"Met Level: {metLevel}, Type: {encounterType}, Version: {version}, Gender: {genderRatio}");
         }
     }
 
@@ -435,7 +414,7 @@ public static class EncounterLocationsBDSP
             return "Both";
         }
 
-        return version1; // Return first version if they're the same
+        return version1;
     }
 
     private static string DetermineGenderRatio(IPersonalInfo personalInfo) => personalInfo switch
@@ -443,10 +422,10 @@ public static class EncounterLocationsBDSP
         { Genderless: true } => "Genderless",
         { OnlyFemale: true } => "Female",
         { OnlyMale: true } => "Male",
-        { Gender: 0 } => "Male",        // 100% Male
-        { Gender: 254 } => "Female",    // 100% Female
-        { Gender: 255 } => "Genderless",// Genderless
-        _ => "Male, Female"             // Mixed gender ratio
+        { Gender: 0 } => "Male",
+        { Gender: 254 } => "Female",
+        { Gender: 255 } => "Genderless",
+        _ => "Male, Female"
     };
 
     private sealed class EncounterInfo
@@ -458,6 +437,7 @@ public static class EncounterLocationsBDSP
         public required ushort LocationId { get; set; }
         public required byte MinLevel { get; set; }
         public required byte MaxLevel { get; set; }
+        public required byte MetLevel { get; set; }
         public required string EncounterType { get; set; }
         public required bool IsUnderground { get; set; }
         public required bool IsShinyLocked { get; set; }

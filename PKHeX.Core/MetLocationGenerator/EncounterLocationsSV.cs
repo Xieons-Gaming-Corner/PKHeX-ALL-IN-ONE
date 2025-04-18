@@ -24,7 +24,6 @@ public static class EncounterLocationsSV
 
             var encounterData = new Dictionary<string, List<EncounterInfo>>();
 
-            // Process all encounter types
             ProcessRegularEncounters(encounterData, gameStrings, pt, errorLogger);
             ProcessEggMetLocations(encounterData, gameStrings, pt, errorLogger);
             ProcessSevenStarRaids(encounterData, gameStrings, pt, errorLogger);
@@ -57,7 +56,7 @@ public static class EncounterLocationsSV
     private static void ProcessEggMetLocations(Dictionary<string, List<EncounterInfo>> encounterData, GameStrings gameStrings,
         PersonalTable9SV pt, StreamWriter errorLogger)
     {
-        const int eggMetLocationId = 60005; // Picnic
+        const int eggMetLocationId = 60005;
         const string locationName = "a Picnic";
 
         errorLogger.WriteLine($"[{DateTime.Now}] Processing egg met locations with location ID: {eggMetLocationId} ({locationName})");
@@ -68,11 +67,9 @@ public static class EncounterLocationsSV
             if (personalInfo is null || !personalInfo.IsPresentInGame)
                 continue;
 
-            // Skip species that can't breed (Undiscovered egg group)
             if (personalInfo.EggGroup1 == 15 || personalInfo.EggGroup2 == 15)
                 continue;
 
-            // For each valid form
             byte formCount = personalInfo.FormCount;
             for (byte form = 0; form < formCount; form++)
             {
@@ -80,11 +77,9 @@ public static class EncounterLocationsSV
                 if (formInfo is null || !formInfo.IsPresentInGame)
                     continue;
 
-                // Skip forms that can't breed
                 if (formInfo.EggGroup1 == 15 || formInfo.EggGroup2 == 15)
                     continue;
 
-                // Eggs hatch at level 1
                 AddSingleEncounterInfo(
                     encounterData,
                     gameStrings,
@@ -93,13 +88,14 @@ public static class EncounterLocationsSV
                     form,
                     locationName,
                     eggMetLocationId,
-                    1, // Min level
-                    1, // Max level
-                    "Egg", // Encounter type
-                    false, // Eggs are never shiny locked in SV
-                    true, // Eggs are considered "gift" Pokémon
-                    string.Empty, // No fixed ball for eggs
-                    "Both", // Available in both versions
+                    1,
+                    1,
+                    1,
+                    "Egg",
+                    false,
+                    true,
+                    string.Empty,
+                    "Both",
                     SizeType9.RANDOM,
                     0
                 );
@@ -264,16 +260,13 @@ public static class EncounterLocationsSV
             return;
         }
 
-        // Process base species
         AddSingleEncounterInfo(encounterData, gameStrings, errorLogger, speciesIndex, form, locationName, locationId,
-            minLevel, maxLevel, encounterType, isShinyLocked, isGift, fixedBall, encounterVersion, sizeType, sizeValue);
+            minLevel, maxLevel, minLevel, encounterType, isShinyLocked, isGift, fixedBall, encounterVersion, sizeType, sizeValue);
 
-        // Track processed species/forms to avoid duplicates
         var processedForms = new HashSet<(ushort Species, byte Form)> { (speciesIndex, form) };
 
-        // Process all evolutions recursively
         ProcessEvolutionLine(encounterData, gameStrings, pt, errorLogger, speciesIndex, form, locationName, locationId,
-            minLevel, maxLevel, encounterType, isShinyLocked, isGift, fixedBall, encounterVersion, sizeType, sizeValue, processedForms);
+            minLevel, maxLevel, minLevel, encounterType, isShinyLocked, isGift, fixedBall, encounterVersion, sizeType, sizeValue, processedForms);
     }
 
     private static int GetMinEvolutionLevel(ushort baseSpecies, ushort evolvedSpecies)
@@ -281,32 +274,27 @@ public static class EncounterLocationsSV
         var tree = EvolutionTree.GetEvolutionTree(EntityContext.Gen9);
         int minLevel = 1;
 
-        // Check direct evolutions first
         var evos = tree.Forward.GetForward(baseSpecies, 0);
         foreach (var evo in evos.Span)
         {
             if (evo.Species == evolvedSpecies)
             {
-                // Direct evolution - use level requirement
                 int levelRequirement = evo.LevelUp > 0 ? evo.LevelUp :
                                        evo.Method == EvolutionType.LevelUp ? evo.Argument : 1;
                 minLevel = Math.Max(minLevel, levelRequirement);
                 return minLevel;
             }
 
-            // Check for indirect evolution (evolution chain)
             var secondaryEvos = tree.Forward.GetForward((ushort)evo.Species, 0);
             foreach (var secondEvo in secondaryEvos.Span)
             {
                 if (secondEvo.Species == evolvedSpecies)
                 {
-                    // Found a two-step evolution chain
                     int firstEvolutionLevel = evo.LevelUp > 0 ? evo.LevelUp :
                                               evo.Method == EvolutionType.LevelUp ? evo.Argument : 1;
                     int secondEvolutionLevel = secondEvo.LevelUp > 0 ? secondEvo.LevelUp :
                                                secondEvo.Method == EvolutionType.LevelUp ? secondEvo.Argument : 1;
 
-                    // Need to reach at least both levels
                     minLevel = Math.Max(minLevel, Math.Max(firstEvolutionLevel, secondEvolutionLevel));
                     return minLevel;
                 }
@@ -318,7 +306,7 @@ public static class EncounterLocationsSV
 
     private static void ProcessEvolutionLine(Dictionary<string, List<EncounterInfo>> encounterData, GameStrings gameStrings,
         PersonalTable9SV pt, StreamWriter errorLogger, ushort species, byte form, string locationName, int locationId,
-        int baseLevel, int maxLevel, string encounterType, bool isShinyLocked, bool isGift, string fixedBall, string encounterVersion,
+        int baseLevel, int maxLevel, int metLevel, string encounterType, bool isShinyLocked, bool isGift, string fixedBall, string encounterVersion,
         SizeType9 sizeType, byte sizeValue, HashSet<(ushort Species, byte Form)> processedForms)
     {
         var personalInfo = pt.GetFormEntry(species, form);
@@ -328,7 +316,6 @@ public static class EncounterLocationsSV
         var nextEvolutions = GetImmediateEvolutions(species, form, pt, processedForms);
         foreach (var (evoSpecies, evoForm) in nextEvolutions)
         {
-            // Skip if we've already processed this form
             if (!processedForms.Add((evoSpecies, evoForm)))
                 continue;
 
@@ -336,18 +323,15 @@ public static class EncounterLocationsSV
             if (evoPersonalInfo is null || !evoPersonalInfo.IsPresentInGame)
                 continue;
 
-            // Get minimum evolution level
             var evolutionMinLevel = GetMinEvolutionLevel(species, evoSpecies);
-            // Use the higher of the evolution requirement and base encounter level
             var minLevel = Math.Max(baseLevel, evolutionMinLevel);
 
             AddSingleEncounterInfo(encounterData, gameStrings, errorLogger, evoSpecies, evoForm, locationName, locationId,
-                minLevel, Math.Max(minLevel, maxLevel), $"{encounterType} (Evolved)", isShinyLocked, isGift,
+                minLevel, Math.Max(minLevel, maxLevel), metLevel, $"{encounterType} (Evolved)", isShinyLocked, isGift,
                 fixedBall, encounterVersion, sizeType, sizeValue);
 
-            // Recursively process next evolutions
             ProcessEvolutionLine(encounterData, gameStrings, pt, errorLogger, evoSpecies, evoForm, locationName, locationId,
-                minLevel, Math.Max(minLevel, maxLevel), encounterType, isShinyLocked, isGift, fixedBall, encounterVersion, sizeType, sizeValue, processedForms);
+                minLevel, Math.Max(minLevel, maxLevel), metLevel, encounterType, isShinyLocked, isGift, fixedBall, encounterVersion, sizeType, sizeValue, processedForms);
         }
     }
 
@@ -359,7 +343,6 @@ public static class EncounterLocationsSV
     {
         var results = new List<(ushort Species, byte Form)>();
 
-        // Get evolution data directly from the evolution tree
         var tree = EvolutionTree.GetEvolutionTree(EntityContext.Gen9);
         var evos = tree.Forward.GetForward(species, form);
 
@@ -368,7 +351,6 @@ public static class EncounterLocationsSV
             ushort evoSpecies = (ushort)evo.Species;
             byte evoForm = (byte)evo.Form;
 
-            // Skip if already processed or not in the game
             if (processedForms.Contains((evoSpecies, evoForm)))
                 continue;
 
@@ -393,12 +375,12 @@ public static class EncounterLocationsSV
             return "Both";
         }
 
-        return version1; // Return first version if they're the same
+        return version1;
     }
 
     private static void AddSingleEncounterInfo(Dictionary<string, List<EncounterInfo>> encounterData, GameStrings gameStrings,
         StreamWriter errorLogger, ushort speciesIndex, byte form, string locationName, int locationId, int minLevel, int maxLevel,
-        string encounterType, bool isShinyLocked, bool isGift, string fixedBall, string encounterVersion,
+        int metLevel, string encounterType, bool isShinyLocked, bool isGift, string fixedBall, string encounterVersion,
         SizeType9 sizeType, byte sizeValue)
     {
         string dexNumber = form > 0 ? $"{speciesIndex}-{form}" : speciesIndex.ToString();
@@ -419,14 +401,12 @@ public static class EncounterLocationsSV
 
         string genderRatio = DetermineGenderRatio(personalInfo);
 
-        // Initialize the list if it doesn't exist
         if (!encounterData.TryGetValue(dexNumber, out var encounterList))
         {
             encounterList = [];
             encounterData[dexNumber] = encounterList;
         }
 
-        // Check for existing similar encounter
         var existingEncounter = encounterList.FirstOrDefault(e =>
             e.LocationId == locationId &&
             e.SpeciesIndex == speciesIndex &&
@@ -436,22 +416,20 @@ public static class EncounterLocationsSV
 
         if (existingEncounter is not null)
         {
-            // Update existing encounter data
             existingEncounter.MinLevel = Math.Min(existingEncounter.MinLevel, minLevel);
             existingEncounter.MaxLevel = Math.Max(existingEncounter.MaxLevel, maxLevel);
+            existingEncounter.MetLevel = Math.Min(existingEncounter.MetLevel, metLevel);
 
-            // Combine version availability
             string existingVersion = existingEncounter.EncounterVersion ?? string.Empty;
             string newEncounterVersion = encounterVersion ?? string.Empty;
             existingEncounter.EncounterVersion = CombineVersions(existingVersion, newEncounterVersion);
 
             errorLogger.WriteLine($"[{DateTime.Now}] Updated existing encounter: {speciesName} " +
                 $"(Dex: {dexNumber}) at {locationName} (ID: {locationId}), Levels {existingEncounter.MinLevel}-{existingEncounter.MaxLevel}, " +
-                $"Type: {encounterType}, Version: {existingEncounter.EncounterVersion}, Gender: {genderRatio}");
+                $"Met Level: {existingEncounter.MetLevel}, Type: {encounterType}, Version: {existingEncounter.EncounterVersion}, Gender: {genderRatio}");
         }
         else
         {
-            // Add new encounter
             encounterList.Add(new EncounterInfo
             {
                 SpeciesName = speciesName,
@@ -461,6 +439,7 @@ public static class EncounterLocationsSV
                 LocationId = locationId,
                 MinLevel = minLevel,
                 MaxLevel = maxLevel,
+                MetLevel = metLevel,
                 EncounterType = encounterType,
                 IsShinyLocked = isShinyLocked,
                 IsGift = isGift,
@@ -473,7 +452,7 @@ public static class EncounterLocationsSV
 
             errorLogger.WriteLine($"[{DateTime.Now}] Processed new encounter: {speciesName} " +
                 $"(Dex: {dexNumber}) at {locationName} (ID: {locationId}), Levels {minLevel}-{maxLevel}, " +
-                $"Type: {encounterType}, Version: {encounterVersion}, Gender: {genderRatio}");
+                $"Met Level: {metLevel}, Type: {encounterType}, Version: {encounterVersion}, Gender: {genderRatio}");
         }
     }
 
@@ -482,10 +461,10 @@ public static class EncounterLocationsSV
         { Genderless: true } => "Genderless",
         { OnlyFemale: true } => "Female",
         { OnlyMale: true } => "Male",
-        { Gender: 0 } => "Male",        // 100% Male
-        { Gender: 254 } => "Female",    // 100% Female
-        { Gender: 255 } => "Genderless",// Genderless
-        _ => "Male, Female"             // Mixed gender ratio
+        { Gender: 0 } => "Male",
+        { Gender: 254 } => "Female",
+        { Gender: 255 } => "Genderless",
+        _ => "Male, Female"
     };
 
     private sealed class EncounterInfo
@@ -497,6 +476,7 @@ public static class EncounterLocationsSV
         public required int LocationId { get; set; }
         public required int MinLevel { get; set; }
         public required int MaxLevel { get; set; }
+        public required int MetLevel { get; set; }
         public required string EncounterType { get; set; }
         public required bool IsShinyLocked { get; set; }
         public required bool IsGift { get; set; }
