@@ -70,7 +70,10 @@ jobs:
         }
 
     - name: Build PKHeX-ALL-IN-ONE
-      run: dotnet build $env:Solution_Name --configuration ${{ matrix.configuration }} --no-restore -r win-x64
+      run: dotnet build $env:Solution_Name --configuration ${{ matrix.configuration }} --no-restore
+
+    - name: Publish PKHeX.WinForms for win-x64
+      run: dotnet publish PKHeX.WinForms/PKHeX.WinForms.csproj --configuration ${{ matrix.configuration }} --no-restore -r win-x64
 
     - name: Execute unit tests
       run: dotnet test $env:Solution_Name --configuration ${{ matrix.configuration }}
