@@ -34,19 +34,30 @@ jobs:
         ref: master
         path: PKHeX
 
+    - name: Create Directory.Build.props for PKHeX.Core
+      shell: pwsh
+      run: |
+        $PropsFile = Join-Path -Path $env:GITHUB_WORKSPACE -ChildPath "PKHeX/Directory.Build.props"
+        $Content = @"
+        <Project>
+          <PropertyGroup>
+            <TargetFramework>net8.0</TargetFramework>
+          </PropertyGroup>
+        </Project>
+        "@
+        Set-Content -Path $PropsFile -Value $Content
+
     - name: Build PKHeX.Core
       run: |
         cd PKHeX/PKHeX.Core
         dotnet restore
         dotnet build --configuration ${{ matrix.configuration }} --no-restore -nowarn:8073,8600,8601,8602,8603,8604,8618,8625
 
-    - name: Copy PKHeX.Core to Solution
+    - name: Debug PKHeX.Core Build Output
       shell: pwsh
       run: |
-        $CoreDllSource = Join-Path -Path $env:GITHUB_WORKSPACE -ChildPath "PKHeX/PKHeX.Core/bin/${{ matrix.configuration }}/net8.0/PKHeX.Core.dll"
-        $CoreDllDest = Join-Path -Path $env:GITHUB_WORKSPACE -ChildPath "PKHeX.Core/bin/${{ matrix.configuration }}/net8.0/PKHeX.Core.dll"
-        New-Item -Path (Split-Path $CoreDllDest -Parent) -ItemType Directory -Force
-        Copy-Item -Path $CoreDllSource -Destination $CoreDllDest -Force
+        $CoreBuildPath = Join-Path -Path $env:GITHUB_WORKSPACE -ChildPath "PKHeX/PKHeX.Core/bin/${{ matrix.configuration }}"
+        Get-ChildItem -Path $CoreBuildPath -Recurse | ForEach-Object { Write-Output $_.FullName }
 
     - name: Restore NuGet packages
       run: dotnet restore $env:Solution_Name
