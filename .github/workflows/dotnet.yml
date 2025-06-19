@@ -1,22 +1,22 @@
-name: .NET Desktop
+name: .NET Build
 
 on:
   push:
-    branches: [ "main", "June_Master_Bdawg" ]
+    branches: [ "June_Master_Bdawg" ]
   pull_request:
-    branches: [ "main", "June_Master_Bdawg" ]
+    branches: [ "June_Master_Bdawg" ]
 
 jobs:
   build:
     strategy:
       matrix:
-        configuration: [Release]
+        configuration: [Debug]
     runs-on: windows-latest
     env:
-      Solution_Name: TeraFinder.sln
+      Solution_Name: PKHeX.sln
 
     steps:
-    - name: Checkout
+    - name: Checkout PKHeX-ALL-IN-ONE
       uses: actions/checkout@v4
       with:
         fetch-depth: 0
@@ -25,7 +25,7 @@ jobs:
     - name: Install .NET
       uses: actions/setup-dotnet@v4
       with:
-        dotnet-version: 9.0.x
+        dotnet-version: 8.0.x
 
     - name: Checkout PKHeX.Core
       uses: actions/checkout@v4
@@ -38,7 +38,7 @@ jobs:
       run: |
         cd PKHeX/PKHeX.Core
         dotnet restore
-        dotnet build --configuration Release --no-restore -nowarn:8073
+        dotnet build --configuration ${{ matrix.configuration }} --no-restore -nowarn:8073
 
     - name: Restore NuGet packages
       run: dotnet restore $env:Solution_Name
@@ -48,16 +48,22 @@ jobs:
       run: |
         $PackageBaseFolder = Join-Path -Path $env:USERPROFILE -ChildPath ".nuget\packages\pkhex.core"
         $LatestVersionFolder = Get-ChildItem -Path $PackageBaseFolder -Directory | Sort-Object {[version]$_.Name} -Descending | Select-Object -First 1
-        $NuGetPackageFolder = Join-Path -Path $LatestVersionFolder.FullName -ChildPath "lib\net9.0"
-        $PkhexCoreDllSource = Join-Path -Path $env:GITHUB_WORKSPACE -ChildPath "PKHeX/PKHeX.Core/bin/Release/net9.0/PKHeX.Core.dll"
+        $NuGetPackageFolder = Join-Path -Path $LatestVersionFolder.FullName -ChildPath "lib\net8.0"
+        $PkhexCoreDllSource = Join-Path -Path $env:GITHUB_WORKSPACE -ChildPath "PKHeX/PKHeX.Core/bin/${{ matrix.configuration }}/net8.0/PKHeX.Core.dll"
         $PkhexCoreDllDest = Join-Path -Path $NuGetPackageFolder -ChildPath "PKHeX.Core.dll"
         Copy-Item -Path $PkhexCoreDllSource -Destination $PkhexCoreDllDest -Force
 
-    - name: Build TeraFinder
-      run: dotnet build $env:Solution_Name --configuration Release --no-restore
+    - name: Build PKHeX-ALL-IN-ONE
+      run: dotnet build $env:Solution_Name --configuration ${{ matrix.configuration }} --no-restore -r win-x64
 
     - name: Execute unit tests
       run: dotnet test $env:Solution_Name --configuration ${{ matrix.configuration }}
+
+    - name: Upload PKHeX Executable artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: PKHeX.Executable
+        path: PKHeX-ALL-IN-ONE-June2025_v1/PKHeX.WinForms/bin/${{ matrix.configuration }}/net8.0-windows/win-x64
 
     - name: Upload Launcher artifacts
       uses: actions/upload-artifact@v4
@@ -71,6 +77,6 @@ jobs:
         name: TeraFinder.Plugins
         path: |
           TeraFinder.Plugins/bin
-          !TeraFinder.Plugins/bin/Release/net9.0-windows7.0/PKHeX.Core.dll
-          !TeraFinder.Plugins/bin/Release/net9.0-windows7.0/PKHeX.Drawing.dll
-          !TeraFinder.Plugins/bin/Release/net9.0-windows7.0/PKHeX.Drawing.PokeSprite.dll
+          !TeraFinder.Plugins/bin/${{ matrix.configuration }}/net8.0-windows7.0/PKHeX.Core.dll
+          !TeraFinder.Plugins/bin/${{ matrix.configuration }}/net8.0-windows7.0/PKHeX.Drawing.dll
+          !TeraFinder.Plugins/bin/${{ matrix.configuration }}/net8.0-windows7.0/PKHeX.Drawing.PokeSprite.dll
