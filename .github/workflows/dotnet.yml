@@ -40,6 +40,14 @@ jobs:
         dotnet restore
         dotnet build --configuration ${{ matrix.configuration }} --no-restore -nowarn:8073,8600,8601,8602,8603,8604,8618,8625
 
+    - name: Copy PKHeX.Core to Solution
+      shell: pwsh
+      run: |
+        $CoreDllSource = Join-Path -Path $env:GITHUB_WORKSPACE -ChildPath "PKHeX/PKHeX.Core/bin/${{ matrix.configuration }}/net8.0/PKHeX.Core.dll"
+        $CoreDllDest = Join-Path -Path $env:GITHUB_WORKSPACE -ChildPath "PKHeX.Core/bin/${{ matrix.configuration }}/net8.0/PKHeX.Core.dll"
+        New-Item -Path (Split-Path $CoreDllDest -Parent) -ItemType Directory -Force
+        Copy-Item -Path $CoreDllSource -Destination $CoreDllDest -Force
+
     - name: Restore NuGet packages
       run: dotnet restore $env:Solution_Name
 
@@ -47,7 +55,7 @@ jobs:
       run: dotnet build $env:Solution_Name --configuration ${{ matrix.configuration }} --no-restore -nowarn:8073,8600,8601,8602,8603,8604,8618,8625
 
     - name: Publish PKHeX.WinForms for win-x64
-      run: dotnet publish PKHeX.WinForms/PKHeX.WinForms.csproj --configuration ${{ matrix.configuration }} --no-restore -r win-x64
+      run: dotnet publish PKHeX.WinForms/PKHeX.WinForms.csproj --configuration ${{ matrix.configuration }} --no-restore -r win-x64 -nowarn:8073,8600,8601,8602,8603,8604,8618,8625
 
     - name: Execute unit tests
       run: dotnet test $env:Solution_Name --configuration ${{ matrix.configuration }}
@@ -57,19 +65,3 @@ jobs:
       with:
         name: PKHeX.Executable
         path: PKHeX.WinForms/bin/${{ matrix.configuration }}/net8.0-windows/win-x64
-
-    - name: Upload Launcher artifacts
-      uses: actions/upload-artifact@v4
-      with:
-        name: TeraFinder.Launcher
-        path: TeraFinder.Launcher/bin
-
-    - name: Upload Plugins artifacts
-      uses: actions/upload-artifact@v4
-      with:
-        name: TeraFinder.Plugins
-        path: |
-          TeraFinder.Plugins/bin
-          !TeraFinder.Plugins/bin/${{ matrix.configuration }}/net8.0-windows7.0/PKHeX.Core.dll
-          !TeraFinder.Plugins/bin/${{ matrix.configuration }}/net8.0-windows7.0/PKHeX.Drawing.dll
-          !TeraFinder.Plugins/bin/${{ matrix.configuration }}/net8.0-windows7.0/PKHeX.Drawing.PokeSprite.dll
