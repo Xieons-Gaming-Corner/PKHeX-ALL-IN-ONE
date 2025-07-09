@@ -6,6 +6,10 @@ on:
   pull_request:
     branches: [ "June_Master_Bdawg" ]
 
+permissions:
+  contents: write
+  actions: read
+
 jobs:
   build:
     strategy:
