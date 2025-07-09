@@ -76,9 +76,8 @@ jobs:
     - name: Debug PKHeX.Core Build Output
       shell: pwsh
       run: |
-        $CoreBuildPath = Join-Path -Path $env-tech:GITHUB_WORKSPACE -ChildPath "PKHeX/PKHeX.Core/bin/${{ matrix.configuration }}"
+        $CoreBuildPath = Join-Path -Path $env:GITHUB_WORKSPACE -ChildPath "PKHeX/PKHeX.Core/bin/${{ matrix.configuration }}"
         Get-ChildItem -Path $CoreBuildPath -Recurse | ForEach-Object { Write-Output $_.FullName }
-
     - name: Restore NuGet packages
       run: dotnet restore $env:Solution_Name
 
