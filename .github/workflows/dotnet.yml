@@ -33,9 +33,16 @@ jobs:
 
     - name: Run filename sanitizer
       run: |
-        python sanitize_filenames.py ${{ github.workspace }}
+        python sanitize_filenames.py "D:\a\PKHeX-ALL-IN-ONE\PKHeX-ALL-IN-ONE"
+      shell: C:\Program Files\PowerShell\7\pwsh.EXE -command ". '{0}'"
       env:
-        PYTHONPATH: ${{ github.workspace }}
+        Solution_Name: PKHeX.sln
+        pythonLocation: C:\hostedtoolcache\windows\Python\3.13.5\x64
+        PKG_CONFIG_PATH: C:\hostedtoolcache\windows\Python\3.13.5\x64/lib/pkgconfig
+        Python_ROOT_DIR: C:\hostedtoolcache\windows\Python\3.13.5\x64
+        Python2_ROOT_DIR: C:\hostedtoolcache\windows\Python\3.13.5\x64
+        Python3_ROOT_DIR: C:\hostedtoolcache\windows\Python\3.13.5\x64
+        PYTHONPATH: D:\a\PKHeX-ALL-IN-ONE\PKHeX-ALL-IN-ONE
 
     - name: Commit sanitized filenames
       run: |
