@@ -2,6 +2,7 @@ import os
 import re
 import logging
 from pathlib import Path
+import argparse
 
 def setup_logging():
     """Set up logging configuration."""
@@ -116,8 +117,12 @@ def main():
     """Main function to run the script."""
     setup_logging()
     
-    # Specify the directory to process
-    directory = input("Enter the directory path to process: ").strip()
+    # Parse command-line arguments
+    parser = argparse.ArgumentParser(description="Sanitize filenames for Windows compatibility.")
+    parser.add_argument("directory", help="The directory path to process.")
+    args = parser.parse_args()
+    
+    directory = args.directory.strip()
     
     if not directory:
         logging.error("No directory provided.")
