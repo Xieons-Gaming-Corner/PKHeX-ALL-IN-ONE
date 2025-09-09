@@ -1,0 +1,76 @@
+name: .NET Build
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        configuration: [Debug]
+    runs-on: windows-latest
+    env:
+      Solution_Name: PKHeX.sln
+
+    steps:
+    - name: Checkout PKHeX-ALL-IN-ONE
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        ref: main
+
+    - name: Install .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: 8.0.x
+
+    - name: Checkout PKHeX.Core
+      uses: actions/checkout@v4
+      with:
+        repository: kwsch/PKHeX
+        # Prefer a stable tag or a pinned commit SHA
+        ref: <pin-to-tag-or-commit>
+        path: PKHeX
+    - name: Create Directory.Build.props for PKHeX.Core
+      shell: pwsh
+      run: |
+        $PropsFile = Join-Path -Path $env:GITHUB_WORKSPACE -ChildPath "PKHeX/Directory.Build.props"
+        $Content = @"
+        <Project>
+          <PropertyGroup>
+            <TargetFramework>net8.0</TargetFramework>
+          </PropertyGroup>
+        </Project>
+        "@
+        Set-Content -Path $PropsFile -Value $Content
+
+    - name: Build PKHeX.Core
+      run: |
+        cd PKHeX/PKHeX.Core
+        dotnet restore
+        dotnet build --configuration ${{ matrix.configuration }} --no-restore -p:NoWarn="8073;8600;8601;8602;8603;8604;8618;8625;8632"
+    - name: Debug PKHeX.Core Build Output
+      shell: pwsh
+      run: |
+        $CoreBuildPath = Join-Path -Path $env:GITHUB_WORKSPACE -ChildPath "PKHeX/PKHeX.Core/bin/${{ matrix.configuration }}"
+        Get-ChildItem -Path $CoreBuildPath -Recurse | ForEach-Object { Write-Output $_.FullName }
+
+    - name: Build PKHeX-ALL-IN-ONE
+      run: dotnet build $env:Solution_Name --configuration ${{ matrix.configuration }} --no-restore -p:NoWarn="8073;8600;8601;8602;8603;8604;8618;8625;8632"
+    - name: Publish PKHeX.WinForms for win-x64
+      run: dotnet publish PKHeX.WinForms/PKHeX.WinForms.csproj --configuration ${{ matrix.configuration }} --no-restore -r win-x64 -p:NoWarn="8073;8600;8601;8602;8603;8604;8618;8625;8632"
+    - name: Execute unit tests
+      run: dotnet test $env:Solution_Name --configuration ${{ matrix.configuration }}
+
+    - name: Upload PKHeX Executable artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: PKHeX.Executable
+        path: PKHeX.WinForms/bin/${{ matrix.configuration }}/net8.0-windows/win-x64
