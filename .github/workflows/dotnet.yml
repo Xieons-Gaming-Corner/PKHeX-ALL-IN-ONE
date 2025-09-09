@@ -26,22 +26,6 @@ jobs:
         fetch-depth: 0
         ref: main
 
-
-    - name: Run filename sanitizer
-      run: |
-        python sanitize_filenames.py ${{ github.workspace }}
-      env:
-        PYTHONPATH: ${{ github.workspace }}
-
-    - name: Commit sanitized filenames
-      run: |
-        git config --local user.email "action@github.com"
-        git config --local user.name "GitHub Action"
-        git add .
-        git commit -m "Sanitize filenames for Windows compatibility" || echo "No changes to commit"
-        git push
-      continue-on-error: true
-
     - name: Install .NET
       uses: actions/setup-dotnet@v4
       with:
