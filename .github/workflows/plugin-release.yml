@@ -1,4 +1,6 @@
 name: Auto-Release
+permissions:
+  contents: write
 
 on:
   push:
