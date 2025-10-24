@@ -346,13 +346,30 @@ public static class WinFormsUtil
         using var sfd = new SaveFileDialog();
         sfd.Filter = genericFilter;
         sfd.DefaultExt = pkx;
-        var namer = new GengarNamer();
+
+        // Use the configured namer from settings
+        IFileNamer<PKM> namer = GetPKMExportNamer();
         sfd.FileName = PathUtil.CleanFileName(namer.GetName(pk));
         if (sfd.ShowDialog() != DialogResult.OK)
             return false;
 
         SavePKM(pk, sfd.FileName, pkx);
         return true;
+    }
+
+    private static IFileNamer<PKM> GetPKMExportNamer()
+    {
+        var preferredNamerName = Main.Settings.SlotExport.DefaultPKMExportNamer;
+
+        // Find the namer by name from available namers
+        foreach (var namer in EntityFileNamer.AvailableNamers)
+        {
+            if (namer.Name == preferredNamerName)
+                return namer;
+        }
+
+        // Fallback to default if not found
+        return EntityFileNamer.Namer;
     }
 
     private static void SavePKM(PKM pk, string path, ReadOnlySpan<char> pkx)
@@ -462,7 +479,8 @@ public static class WinFormsUtil
 
         try
         {
-            File.WriteAllBytes(path, sav.Write(flags).Span);
+            var data = sav.Write(flags).Span;
+            ExportSAVInternal(data, path, sav.Metadata.FilePath);
             sav.State.Edited = false;
             sav.Metadata.SetExtraInfo(path);
             Alert(MsgSaveExportSuccessPath, path);
@@ -474,6 +492,26 @@ public static class WinFormsUtil
             else // Don't know what threw, but it wasn't I/O related.
                 throw;
         }
+    }
+
+    private static void ExportSAVInternal(ReadOnlySpan<byte> data, string path, string? exist)
+    {
+        // If it originated from a zip, and a zip is being written, update the zip.
+        if (Path.GetExtension(path) is ".zip")
+        {
+            if (Path.Exists(exist) && Path.GetExtension(exist) is ".zip")
+            {
+                // If the paths are different, copy the original zip to the new location first.
+                if (path != exist)
+                    File.Copy(exist, path, true);
+
+                ZipReader.Update(path, data);
+                return;
+            }
+        }
+
+        // Otherwise, just write the raw data.
+        File.WriteAllBytes(path, data);
     }
 
     /// <summary>
