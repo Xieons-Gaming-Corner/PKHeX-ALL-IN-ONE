@@ -182,7 +182,7 @@ public static class EncounterLocationsSWSH
             string setIVs = string.Empty;
 
             // If the encounter has specific IVs set, create a formatted IV string
-            if (IsIVsSpecified(encounter.IVs))
+            if (encounter.IVs.IsSpecified)
             {
                 setIVs = FormatIVs(encounter.IVs);
             }
@@ -391,6 +391,29 @@ public static class EncounterLocationsSWSH
                 locationName, MaxLair, encounter.Level, encounter.Level, "Max Lair",
                 encounter.Shiny == Shiny.Never, false, string.Empty, "Both", canGigantamax,
                 flawlessIVCount, string.Empty, weather);
+
+            // Special handling for form-changing Pokemon in Gen 8
+            // Zygarde can change to any form in Gen 8 after being caught
+            if (encounter.Species == (int)Species.Zygarde)
+            {
+                var pt = PersonalTable.SWSH;
+                // Add all other Zygarde forms (0, 1, 2, 3) since they can all be obtained from a Max Lair catch
+                for (byte form = 0; form <= 3; form++)
+                {
+                    if (form == encounter.Form)
+                        continue; // Already added above
+
+                    var formInfo = pt.GetFormEntry(encounter.Species, form);
+                    if (formInfo is null || !formInfo.IsPresentInGame)
+                        continue;
+
+                    AddEncounterInfoWithEvolutions(
+                        encounterData, gameStrings, errorLogger, encounter.Species, form,
+                        locationName, MaxLair, encounter.Level, encounter.Level, "Max Lair",
+                        encounter.Shiny == Shiny.Never, false, string.Empty, "Both", canGigantamax,
+                        flawlessIVCount, string.Empty, weather);
+                }
+            }
         }
     }
 
@@ -1139,22 +1162,6 @@ public static class EncounterLocationsSWSH
         { Gender: 255 } => "Genderless",
         _ => "Male, Female"
     };
-
-    /// <summary>
-    /// Checks if an IV set has any specified values.
-    /// </summary>
-    /// <param name="ivs">IV set to check</param>
-    /// <returns>True if any IVs are specified, false otherwise</returns>
-    private static bool IsIVsSpecified(IndividualValueSet ivs)
-    {
-        bool hasNonDefaultIV = ivs.HP != -1 || ivs.ATK != -1 || ivs.DEF != -1 ||
-                               ivs.SPA != -1 || ivs.SPD != -1 || ivs.SPE != -1;
-
-        bool hasMixedValues = (ivs.HP != ivs.ATK || ivs.ATK != ivs.DEF || ivs.DEF != ivs.SPA ||
-                               ivs.SPA != ivs.SPD || ivs.SPD != ivs.SPE);
-
-        return hasNonDefaultIV && hasMixedValues;
-    }
 
     /// <summary>
     /// Formats an IV set into a readable string.
